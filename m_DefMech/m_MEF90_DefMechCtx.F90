@@ -280,18 +280,21 @@ Module m_MEF90_DefMechCtx
    Character(len = MEF90_MXSTRLEN),Dimension(13),protected   :: MEF90DefMech_damageTypeList
    
    Enum,bind(c)
-      enumerator  :: MEF90DefMech_plasticityTypeNone = 0,               &
-                     MEF90DefMech_plasticityTypeTresca,                 &
-                     MEF90DefMech_plasticityTypeVonMises,               &
-                     MEF90DefMech_plasticityTypeVonMisesPlaneTheory,    &
-                     MEF90DefMech_plasticityTypeCapModel,               &
-                     MEF90DefMech_plasticityTypeDruckerPragerCapModel,  &
-                     MEF90DefMech_plasticityTypeVonMises1D,             &
-                     MEF90DefMech_plasticityTypeHillPlaneTheory,        &
-                     MEF90DefMech_PlasticityTypeGreen,                  &
-                     MEF90DefMech_PlasticityTypeGurson
+      enumerator  :: MEF90DefMech_plasticityTypeNone = 0,                      &
+                     MEF90DefMech_plasticityTypeTresca,                        &
+                     MEF90DefMech_plasticityTypeVonMises,                      &
+                     MEF90DefMech_plasticityTypeVonMisesPlaneTheory,           &
+                     MEF90DefMech_plasticityTypeVonMisesViscous,               &
+                     MEF90DefMech_plasticityTypeCapModel,                      &
+                     MEF90DefMech_plasticityTypeDruckerPragerCapModel,         &
+                     MEF90DefMech_plasticityTypeVonMises1D,                    &
+                     MEF90DefMech_plasticityTypeHillPlaneTheory,               &
+                     MEF90DefMech_PlasticityTypeGreen,                         &
+                     MEF90DefMech_PlasticityTypeGurson,                        &
+                     MEF90DefMech_PlasticityTypeCrystalSingleSlip,             &
+                     MEF90DefMech_PlasticityTypeCrystalBCC             
    End Enum
-   Character(len = MEF90_MXSTRLEN),Dimension(13),protected   :: MEF90DefMech_plasticityTypeList
+   Character(len = MEF90_MXSTRLEN),Dimension(16),protected   :: MEF90DefMech_plasticityTypeList
    
    Enum,bind(c)
       enumerator  :: MEF90DefMech_unilateralContactTypeNone = 0,                     &
@@ -371,15 +374,18 @@ Contains
       MEF90DefMech_plasticityTypeList(2) = 'Tresca'
       MEF90DefMech_plasticityTypeList(3) = 'VonMises'
       MEF90DefMech_plasticityTypeList(4) = 'VonMisesPlaneTheory'
-      MEF90DefMech_plasticityTypeList(5) = 'CapModel'
-      MEF90DefMech_plasticityTypeList(6) = 'DruckerPragerCapModel'
-      MEF90DefMech_plasticityTypeList(7) = 'VonMises1D'
-      MEF90DefMech_plasticityTypeList(8) = 'HillPlaneTheory'
-      MEF90DefMech_plasticityTypeList(9)  = 'Green'
-      MEF90DefMech_plasticityTypeList(10) = 'Gurson'
-      MEF90DefMech_plasticityTypeList(11) = 'MEF90DefMech_plasticityType'
-      MEF90DefMech_plasticityTypeList(12) = '_MEF90DefMech_plasticityType'
-      MEF90DefMech_plasticityTypeList(13) = ''
+      MEF90DefMech_plasticityTypeList(5) = 'VonMisesViscous'
+      MEF90DefMech_plasticityTypeList(6) = 'CapModel'
+      MEF90DefMech_plasticityTypeList(7) = 'DruckerPragerCapModel'
+      MEF90DefMech_plasticityTypeList(8) = 'VonMises1D'
+      MEF90DefMech_plasticityTypeList(9) = 'HillPlaneTheory'
+      MEF90DefMech_plasticityTypeList(10)  = 'Green'
+      MEF90DefMech_plasticityTypeList(11) = 'Gurson'
+      MEF90DefMech_plasticityTypeList(12) = 'CrystalSingleSlip'
+      MEF90DefMech_plasticityTypeList(13) = 'CrystalBCC'
+      MEF90DefMech_plasticityTypeList(14) = 'MEF90DefMech_plasticityType'
+      MEF90DefMech_plasticityTypeList(15) = '_MEF90DefMech_plasticityType'
+      MEF90DefMech_plasticityTypeList(16) = ''
 
       MEF90DefMech_unilateralContactTypeList(1) = 'None'
       MEF90DefMech_unilateralContactTypeList(2) = 'HydrostaticDeviatoric'
