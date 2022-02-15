@@ -31,6 +31,7 @@ Cell based fields
 10: plasticStrain_XX
 11: plasticStrain_YY
 12: plasticStrain_XY
+13-24: plasticSlips_*
 
 3D:
 1:  heatFlux
@@ -52,4 +53,5 @@ Cell based fields
 17: plasticStrain_YZ
 18: plasticStrain_XZ
 19: plasticStrain_XY
+20-31: plasticSlips_*
 
