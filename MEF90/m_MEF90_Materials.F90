@@ -62,6 +62,11 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: drivingForceGamma                                ! gamma parameter in Drucker-Prager driving force
       PetscBool                     :: isLinearIsotropicHardening
       PetscBool                     :: isNoPlCoupling
+      PetscBool                     :: isViscousPlasticity                              ! boolean telling if crystal plasticity is viscous or rate-independent
+      PetscReal                     :: ViscosityGamma0                                  ! viscosity reference slip rate
+      PetscReal                     :: ViscosityN                                       ! viscosity exponent
+      PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
+      PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient 
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp2D_Type
 
@@ -102,6 +107,11 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: drivingForceGamma                                ! gamma parameter in Drucker-Prager driving force
       PetscBool                     :: isLinearIsotropicHardening
       PetscBool                     :: isNoPlCoupling
+      PetscBool                     :: isViscousPlasticity                              ! boolean telling if crystal plasticity is viscous or rate-independent
+      PetscReal                     :: ViscosityGamma0                                  ! viscosity reference slip rate
+      PetscReal                     :: ViscosityN                                       ! viscosity exponent
+      PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
+      PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient 
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp3D_Type
 
@@ -155,6 +165,11 @@ Module m_MEF90_Materials_Types
       0.0_Kr,                                                                          & ! drivingForceGamma
       .FALSE.,                                                                         & ! isLinearIsotropicHardening
       .FALSE.,                                                                         & ! isNoPlCoupling
+      .FALSE.,                                                                         & ! isViscousPlasticity
+      1.0_Kr,                                                                          & ! ViscosityGamma0
+      1.0_Kr,                                                                          & ! ViscosityN
+      1.0_Kr,                                                                          & ! eta_0
+      10.0_Kr,                                                                         & ! eta_m
       "MEF90Mathium2D")
 
    Type(MEF90MatProp3D_Type),Parameter     :: MEF90Mathium3D = MEF90MatProp3D_Type(    &
@@ -206,6 +221,11 @@ Module m_MEF90_Materials_Types
       2,                                                                               & ! drivingForcep
       .FALSE.,                                                                         & ! isLinearIsotropicHardening
       .FALSE.,                                                                         & ! isNoPlCoupling
+      .FALSE.,                                                                         & ! isViscousPlasticity
+      1.0_Kr,                                                                          & ! ViscosityGamma0
+      1.0_Kr,                                                                          & ! ViscosityN
+      1.0_Kr,                                                                          & ! eta_0
+      10.0_Kr,                                                                         & ! eta_m
       "MEF90Mathium3D")
 End Module m_MEF90_Materials_Types
 
@@ -438,6 +458,11 @@ Contains
 
       Call PetscBagRegisterBool(bag,matprop%isLinearIsotropicHardening,default%isLinearIsotropicHardening,'isLinearIsotropicHardening','[bool] Plasticity with Linear Isotropic Hardening',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterBool(bag,matprop%isNoPlCoupling,default%isNoPlCoupling,'isNoPlCoupling','[bool] Coupling between damage and plastic dissipation',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterBool(bag,matprop%isViscousPlasticity,default%isViscousPlasticity,'isViscousPlasticity','[bool] Viscous plastic potential',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%ViscosityGamma0,default%ViscosityGamma0,'ViscosityGamma0','[s^(-1)] Reference plastic deformation rate',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%ViscosityN,default%ViscosityN,'ViscosityN','[unit-less] Viscosity exponent',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%eta_0,default%eta_0,'eta_0','[s^(-1)] Reference penalty (similar to a plastic deformation rate)',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%eta_m,default%eta_m,'eta_m','[unit-less] Geometric sequence quotient of rate independent model',ierr);CHKERRQ(ierr)
       !Call PetscBagSetFromOptions(bag,ierr)
    End Subroutine PetscBagRegisterMEF90MatProp2D
 
@@ -514,6 +539,11 @@ Contains
 
       Call PetscBagRegisterBool(bag,matprop%isLinearIsotropicHardening,default%isLinearIsotropicHardening,'isLinearIsotropicHardening','[bool] Plasticity with Linear Isotropic Hardening',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterBool(bag,matprop%isNoPlCoupling,default%isNoPlCoupling,'isNoPlCoupling','[bool] Coupling between damage and plastic dissipation',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterBool(bag,matprop%isViscousPlasticity,default%isViscousPlasticity,'isViscousPlasticity','[bool] Viscous plastic potential',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%ViscosityGamma0,default%ViscosityGamma0,'ViscosityGamma0','[s^(-1)] Reference plastic deformation rate',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%ViscosityN,default%ViscosityN,'ViscosityN','[unit-less] Viscosity exponent',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%eta_0,default%eta_0,'eta_0','[s^(-1)] Reference penalty (similar to a plastic deformation rate)',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%eta_m,default%eta_m,'eta_m','[unit-less] Geometric sequence quotient of rate independent model',ierr);CHKERRQ(ierr)
       !Call PetscBagSetFromOptions(bag,ierr)
    End Subroutine PetscBagRegisterMEF90MatProp3D
 
