@@ -77,6 +77,10 @@ Program CoupledPlasticityDamage
    !!! cumulatedDissipatedPlasticEnergy
    Type(Vec)                                          :: cumulatedDissipatedPlasticEnergyOld
    Type(Vec)                                          :: cumulatedDissipatedPlasticEnergyVariation
+   
+   !!! plastic slips
+   Type(Vec)                                          :: plasticSlipsOld
+   Type(Vec)                                          :: plasticSlipsVariation
 
    Type(MEF90DefMechCellSetOptions_Type),pointer      :: cellSetOptions
 
@@ -146,6 +150,8 @@ Program CoupledPlasticityDamage
    Call VecDuplicate(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
    Call VecDuplicate(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
    Call VecCopy(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
+   Call VecDuplicate(MEF90DefMechCtx%plasticSlips,plasticSlipsOld,ierr);CHKERRQ(ierr)
+   Call VecDuplicate(MEF90DefMechCtx%plasticSlips,plasticSlipsVariation,ierr);CHKERRQ(ierr)
    DeAllocate(MEF90DefMechCtx%temperature)
       
    Call VecDuplicate(MEF90DefMechCtx%plasticStrain,plasticStrainOld,ierr);CHKERRQ(ierr)
@@ -246,6 +252,15 @@ Program CoupledPlasticityDamage
             Call VecCopy(MEF90DefMechCtx%plasticStrain,plasticStrainOld,ierr);CHKERRQ(ierr)
             Call DMRestoreLocalVector(MEF90DefMechCtx%cellDMMatS,localVec,ierr);CHKERRQ(ierr)
          End IF
+
+         If (MEF90DefMechGlobalOptions%plasticSlipsOffset > 0) Then
+            Call DMGetLocalVector(MEF90DefMechCtx%cellDMVect,localVec,ierr);CHKERRQ(ierr)
+            Call VecLoadExodusCell(MEF90DefMechCtx%cellDMVect,localVec,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
+                                         MEF90DefMechCtx%MEF90Ctx%fileExoUnit,MEF90GlobalOptions%timeSkip,MEF90DefMechGlobalOptions%plasticSlipsOffset,ierr);CHKERRQ(ierr)
+            Call DMLocalToGlobalBegin(MEF90DefMechCtx%cellDMVect,localVec,INSERT_VALUES,MEF90DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+            Call DMLocalToGlobalEnd(MEF90DefMechCtx%cellDMVect,localVec,INSERT_VALUES,MEF90DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+            Call DMRestoreLocalVector(MEF90DefMechCtx%cellDMVect,localVec,ierr);CHKERRQ(ierr)
+         End If
 
          Call DMGetLocalVector(MEF90DefMechCtx%DMVect,localVec,ierr);CHKERRQ(ierr)
          Call VecLoadExodusVertex(MEF90DefMechCtx%DMVect,localVec,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
@@ -393,7 +408,7 @@ Program CoupledPlasticityDamage
                   !!! Absolute/Relative error 
                   !!! || p_i - p_{i-1} ||_L_inifnity / (1+ || p_i ||_L_inifnity) < tolerance
                   Call VecCopy(MEF90DefMechCtx%plasticStrain,plasticStrainPrevious,ierr);CHKERRQ(ierr)
-                  Call MEF90DefMechPlasticStrainUpdate(MEF90DefMechCtx,MEF90DefMechCtx%plasticStrain,MEF90DefMechCtx%displacement,plasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
+                  Call MEF90DefMechPlasticStrainUpdate(MEF90DefMechCtx,MEF90DefMechCtx%plasticStrain,MEF90DefMechCtx%displacement,plasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,plasticSlipsVariation,ierr);CHKERRQ(ierr)
                   Call VecAxPy(plasticStrainPrevious,-1.0_Kr,MEF90DefMechCtx%plasticStrain,ierr);CHKERRQ(ierr)
                   Call VecNorm(plasticStrainPrevious,NORM_INFINITY,PlasticStrainMaxChange,ierr);CHKERRQ(ierr)
                   Write(IOBuffer,210) InnerLoopIter,PlasticStrainMaxChange
@@ -403,6 +418,7 @@ Program CoupledPlasticityDamage
                   RelativeAbsoluteplasticStrainATol=(1.0_Kr+RelativeAbsoluteplasticStrainATol)*MEF90DefMechGlobalOptions%plasticStrainATol
 
                   Call VecWAXPY(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,1.0_Kr,cumulatedDissipatedPlasticEnergyOld,cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
+                  Call VecWAXPY(MEF90DefMechCtx%plasticSlips,1.0_Kr,plasticSlipsOld,plasticSlipsVariation,ierr);CHKERRQ(ierr)
 
 
                   !!! Minimization with respect to alpha
@@ -512,6 +528,7 @@ Program CoupledPlasticityDamage
          !!! Update plasticstrainold & cumulatedDissipatedPlasticEnergy
          Call VecCopy(MEF90DefMechCtx%plasticStrain,plasticStrainOld,ierr);CHKERRQ(ierr)
          Call VecCopy(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
+         Call VecCopy(MEF90DefMechCtx%plasticSlips,plasticSlipsOld,ierr);CHKERRQ(ierr)
 
          Call MEF90DefMechViewEXO(MEF90DefMechCtx,step,ierr)
 
@@ -552,6 +569,8 @@ Program CoupledPlasticityDamage
    Call VecDestroy(plasticStrainPrevious,ierr);CHKERRQ(ierr)
    Call VecDestroy(cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
    Call VecDestroy(cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
+   Call VecDestroy(plasticSlipsOld,ierr);CHKERRQ(ierr)
+   Call VecDestroy(plasticSlipsVariation,ierr);CHKERRQ(ierr)
 
    Call DMDestroy(Mesh,ierr);CHKERRQ(ierr)
 
