@@ -21,6 +21,7 @@ Module m_MEF90_DefMechCtx_Type
       Type(Vec),Pointer                      :: plasticStrain
       Type(Vec),Pointer                      :: cumulatedDissipatedPlasticEnergy
       Type(Vec),Pointer                      :: stress
+      Type(Vec),Pointer                      :: plasticSlips
       
       PetscBag                               :: GlobalOptionsBag
       PetscBag,Dimension(:),Pointer          :: CellSetOptionsBag
@@ -69,6 +70,7 @@ Module m_MEF90_DefMechCtx_Type
       PetscInt                               :: plasticStrainOffset
       PetscInt                               :: stressOffset
       PetscInt                               :: cumulatedPlasticDissipationOffset
+      PetscInt                               :: plasticSlipsOffset
       !!! scaling = time (step) scaling law currently CST, Linear, or File
       PetscInt                               :: boundaryDisplacementScaling
       PetscInt                               :: displacementLowerBoundScaling
@@ -523,6 +525,7 @@ Contains
       Nullify(DefMechCtx%temperature)
       Nullify(DefMechCtx%plasticStrain)
       Nullify(DefMechCtx%cumulatedDissipatedPlasticEnergy)
+      Nullify(DefMechCtx%plasticSlips)
    End Subroutine MEF90DefMechCtxCreate
    
 #undef __FUNCT__
@@ -662,6 +665,11 @@ Contains
       Call DMCreateGlobalVector(DefMechCtx%CellDMMatS,DefMechCtx%stress,ierr);CHKERRQ(ierr)
       Call PetscObjectSetName(DefMechCtx%stress,"stress",ierr);CHKERRQ(ierr)
       Call VecSet(DefMechCtx%stress,0.0_Kr,ierr);CHKERRQ(ierr)
+
+      Allocate(DefMechCtx%plasticSlips,stat=ierr)
+      Call DMCreateGlobalVector(DefMechCtx%CellDMVect,DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+      Call PetscObjectSetName(DefMechCtx%plasticSlips,"plasticSlips",ierr);CHKERRQ(ierr)
+      Call VecSet(DefMechCtx%plasticSlips,0.0_Kr,ierr);CHKERRQ(ierr)
    End Subroutine MEF90DefMechCtxCreateVectors
 
 #undef __FUNCT__
@@ -766,6 +774,13 @@ Contains
          DeAllocate(DefMechCtx%stress)
          Nullify(DefMechCtx%stress)
       End If
+
+      If (Associated(DefMechCtx%plasticSlips)) Then
+         Call VecDestroy(DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+         DeAllocate(DefMechCtx%plasticSlips)
+         Nullify(DefMechCtx%plasticSlips)
+      End If
+
    End Subroutine MEF90DefMechCtxDestroyVectors
 
 #undef __FUNCT__
@@ -819,6 +834,7 @@ Contains
       Nullify(DefMechCtx%temperature)
       Nullify(DefMechCtx%plasticStrain)
       Nullify(DefMechCtx%cumulatedDissipatedPlasticEnergy)
+      Nullify(DefMechCtx%plasticSlips)
 
       Call VecScatterDestroy(DefMechCtx%DMScalScatter,ierr);CHKERRQ(ierr)
       Call VecScatterDestroy(DefMechCtx%cellDMScalScatter,ierr);CHKERRQ(ierr)
@@ -873,6 +889,7 @@ Contains
       Call PetscBagRegisterInt (bag,DefMechGlobalOptions%temperatureOffset,default%temperatureOffset,'temperature_Offset','Position of temperature field in EXO file',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterInt (bag,DefMechGlobalOptions%plasticStrainOffset,default%plasticStrainOffset,'plasticStrain_Offset','Position of the plastic strain field in EXO file',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterInt (bag,DefMechGlobalOptions%cumulatedPlasticDissipationOffset,default%cumulatedPlasticDissipationOffset,'cumulatedPlasticDissipation_Offset','Position of the Cumulated Plastic Plastic Dissipation field in EXO file',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterInt (bag,DefMechGlobalOptions%plasticSlipsOffset,default%plasticSlipsOffset,'plasticSlips_Offset','Position of the crystal plastic slip fields in EXO file',ierr);CHKERRQ(ierr)
 
       Call PetscBagRegisterEnum(bag,DefMechGlobalOptions%boundaryDisplacementScaling,MEF90ScalingList,default%boundaryDisplacementScaling,'boundaryDisplacement_scaling','Boundary displacement scaling',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterEnum(bag,DefMechGlobalOptions%displacementLowerBoundScaling,MEF90ScalingList,default%displacementLowerBoundScaling,'displacementlowerbound_scaling','Displacement lower bound scaling',ierr);CHKERRQ(ierr)
