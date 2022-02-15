@@ -1159,6 +1159,14 @@ End Subroutine MEF90DefMechUpdateboundaryDamage
          End If
       End If
 
+      If (MEF90DefMechGlobalOptions%plasticSlipsOffset > 0) Then
+         If (Associated(MEF90DefMechCtx%plasticSlips)) Then
+            Call VecViewExodusCell(MEF90DefMechCtx%cellDMVect,MEF90DefMechCtx%plasticSlips,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
+                                   MEF90DefMechCtx%MEF90Ctx%fileExoUnit,step,MEF90DefMechGlobalOptions%plasticSlipsOffset,ierr);CHKERRQ(ierr)
+         Else
+            Call PetscPrintf(PETSC_COMM_WORLD,"[WARNING] plasticSlips field not associated, not saving. Use -plasitcSlipsOffset 0 \n",ierr);CHKERRQ(ierr)
+         End If
+      End If
 
       If ((MEF90DefMechGlobalOptions%boundaryDisplacementOffset > 0) .AND. &
           (MEF90DefMechGlobalOptions%boundaryDisplacementOffset /= MEF90DefMechGlobalOptions%displacementOffset)) Then
@@ -1310,8 +1318,13 @@ End Subroutine MEF90DefMechUpdateboundaryDamage
       If (MEF90DefMechGlobalOptions%plasticStrainOffset > 0) Then
          numfield = max(numfield,MEF90DefMechGlobalOptions%plasticStrainOffset+(dim*(dim+1))/2-1)
       End If
+
       If (MEF90DefMechGlobalOptions%cumulatedPlasticDissipationOffset > 0) Then
          numfield = max(numfield,MEF90DefMechGlobalOptions%cumulatedPlasticDissipationOffset)
+      End If
+
+      If (MEF90DefMechGlobalOptions%plasticSlipsOffset > 0) Then
+         numfield = max(numfield,MEF90DefMechGlobalOptions%plasticSlipsOffset+11)
       End If
       Allocate(nameC(numfield))
 
@@ -1365,6 +1378,21 @@ End Subroutine MEF90DefMechUpdateboundaryDamage
 
       If (MEF90DefMechGlobalOptions%cumulatedPlasticDissipationOffset > 0) Then
          nameC(MEF90DefMechGlobalOptions%cumulatedPlasticDissipationOffset)       = "Cumulated_Plastic_Dissipation"
+      End If
+
+      If (MEF90DefMechGlobalOptions%plasticSlipsOffset > 0) Then
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+0)                           = "PlasticSlip_0"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+1)                           = "PlasticSlip_1"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+2)                           = "PlasticSlip_2"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+3)                           = "PlasticSlip_3"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+4)                           = "PlasticSlip_4"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+5)                           = "PlasticSlip_5"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+6)                           = "PlasticSlip_6"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+7)                           = "PlasticSlip_7"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+8)                           = "PlasticSlip_8"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+9)                           = "PlasticSlip_9"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+10)                          = "PlasticSlip_10"
+         nameC(MEF90DefMechGlobalOptions%plasticSlipsOffset+11)                          = "PlasticSlip_11"
       End If
       
       Call MEF90EXOFormat(MEF90DefMechCtx%MEF90Ctx%fileEXOUNIT,nameG,nameC,nameV,ierr)
@@ -1632,18 +1660,18 @@ End Subroutine MEF90DefMechUpdateboundaryDamage
 !!!  (c) 2012-14 Blaise Bourdin bourdin@lsu.edu
 !!!
 
-   Subroutine MEF90DefMechPlasticStrainUpdate(MEF90DefMechCtx,plasticStrain,x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,ierr)
+   Subroutine MEF90DefMechPlasticStrainUpdate(MEF90DefMechCtx,plasticStrain,x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,plasticSlipsVariation,ierr)
       Type(MEF90DefMechCtx_Type),Intent(IN)              :: MEF90DefMechCtx
       Type(Vec),Intent(INOUT)                            :: plasticStrain
-      Type(Vec),Intent(IN)                               :: x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld
+      Type(Vec),Intent(IN)                               :: x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,plasticSlipsVariation
       PetscErrorCode,Intent(OUT)                         :: ierr
       
       PetscInt                                           :: dim      
       Call DMMeshGetDimension(MEF90DefMechCtx%DM,dim,ierr);CHKERRQ(ierr)
       If (dim == 2) Then
-         Call MEF90DefMechPlasticStrainUpdate2D(MEF90DefMechCtx,plasticStrain,x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,ierr)
+         Call MEF90DefMechPlasticStrainUpdate2D(MEF90DefMechCtx,plasticStrain,x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,plasticSlipsVariation,ierr)
       Else If (dim == 3) Then
-         Call MEF90DefMechPlasticStrainUpdate3D(MEF90DefMechCtx,plasticStrain,x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,ierr)
+         Call MEF90DefMechPlasticStrainUpdate3D(MEF90DefMechCtx,plasticStrain,x,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,plasticSlipsVariation,ierr)
       End If      
    End Subroutine MEF90DefMechPlasticStrainUpdate
 End Module m_MEF90_DefMech

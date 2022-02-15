@@ -76,6 +76,10 @@ Program vDef
    Type(Vec)                                          :: cumulatedDissipatedPlasticEnergyOld
    Type(Vec)                                          :: cumulatedDissipatedPlasticEnergyVariation
 
+   !!! plastic slips
+   Type(Vec)                                          :: plasticSlipsOld
+   Type(Vec)                                          :: plasticSlipsVariation
+
       
 
 
@@ -145,6 +149,9 @@ Program vDef
    Call VecDuplicate(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
    !Call VecCopy(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
 
+   !!!plasticSlips Vectors
+   Call VecDuplicate(MEF90DefMechCtx%plasticSlips,plasticSlipsOld,ierr);CHKERRQ(ierr)
+   Call VecDuplicate(MEF90DefMechCtx%plasticSlips,plasticSlipsVariation,ierr);CHKERRQ(ierr)
    
    Call VecDuplicate(MEF90DefMechCtx%plasticStrain,plasticStrainOld,ierr);CHKERRQ(ierr)
    Call VecDuplicate(MEF90DefMechCtx%PlasticStrain,plasticStrainPrevious,ierr);CHKERRQ(ierr)
@@ -408,8 +415,9 @@ Program vDef
                Call PetscPrintf(MEF90Ctx%Comm,IOBuffer,ierr);CHKERRQ(ierr)
 
                Call VecCopy(MEF90DefMechCtx%PlasticStrain,plasticStrainPrevious,ierr);CHKERRQ(ierr)
-               Call MEF90DefMechPlasticStrainUpdate(MEF90DefMechCtx,MEF90DefMechCtx%PlasticStrain,MEF90DefMechCtx%displacement,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
+               Call MEF90DefMechPlasticStrainUpdate(MEF90DefMechCtx,MEF90DefMechCtx%PlasticStrain,MEF90DefMechCtx%displacement,PlasticStrainOld,plasticStrainPrevious,cumulatedDissipatedPlasticEnergyVariation,cumulatedDissipatedPlasticEnergyOld,plasticSlipsVariation,ierr);CHKERRQ(ierr)
                Call VecWAXPY(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,1.0_Kr,cumulatedDissipatedPlasticEnergyOld,cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
+               Call VecWAXPY(MEF90DefMechCtx%plasticSlips,1.0_Kr,plasticSlipsOld,plasticSlipsVariation,ierr);CHKERRQ(ierr)
 
                ! Check for BT if necessary
                BTCheck: If ((MEF90DefMechGlobalOptions%BTInterval > 0) .AND. &
@@ -476,6 +484,7 @@ Program vDef
             End Do AltMin
 
             Call VecCopy(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
+            Call VecCopy(MEF90DefMechCtx%plasticSlips,plasticSlipsOld,ierr);CHKERRQ(ierr)
 
             EndStep: If (.NOT. BTActive) Then
                !!! Compute energies
@@ -620,6 +629,8 @@ Program vDef
    Call VecDestroy(cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
    Call VecDestroy(cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
    Call VecDestroy(cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
+   Call VecDestroy(plasticSlipsOld,ierr);CHKERRQ(ierr)
+   Call VecDestroy(plasticSlipsVariation,ierr);CHKERRQ(ierr)
 
 
    DeAllocate(elasticEnergySet)
