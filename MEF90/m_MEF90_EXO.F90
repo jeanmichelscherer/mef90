@@ -235,7 +235,8 @@ Contains
          If (MEF90Ctx%rank == 0) Then
             Call EXGELB(exoID,setID(set),EXOelemType,junk1,junk2,junk3,exoerr)
          EndIf
-         Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHAR,0,MEF90Ctx%comm,ierr)
+         !!! Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHAR,0,MEF90Ctx%comm,ierr)
+         Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHARACTER,0,MEF90Ctx%comm,ierr)
          Call EXO2MEF90ElementType_Scal(EXOelemType,numDim,elemType(set),ierr)
       End Do
       DeAllocate(setID)
@@ -291,7 +292,8 @@ Contains
          If (MEF90Ctx%rank == 0) Then
             Call EXGELB(exoID,setID(set),EXOelemType,junk1,junk2,junk3,exoerr)
          EndIf
-         Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHAR,0,MEF90Ctx%comm,ierr)
+         !!! Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHAR,0,MEF90Ctx%comm,ierr)
+         Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHARACTER,0,MEF90Ctx%comm,ierr)
          Call EXO2MEF90ElementType_Vect(EXOelemType,numDim,elemType(set),ierr)
       End Do
       DeAllocate(setID)
@@ -347,7 +349,8 @@ Contains
          If (MEF90Ctx%rank == 0) Then
             Call EXGELB(exoID,setID(set),EXOelemType,junk1,junk2,junk3,exoerr)
          EndIf
-         Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHAR,0,MEF90Ctx%comm,ierr)
+         !!! Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHAR,0,MEF90Ctx%comm,ierr)
+         Call MPI_Bcast(EXOelemType,MXSTLN,MPI_CHARACTER,0,MEF90Ctx%comm,ierr)
          Call EXO2MEF90ElementType_Elast(EXOelemType,numDim,elemType(set),ierr)
       End Do
       DeAllocate(setID)
