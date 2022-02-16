@@ -49,7 +49,7 @@ Module MEF90_APPEND(m_MEF90_DefMechPlasticity,MEF90_DIM)D
       real(Kind = Kr)             :: rateIndependentFixedPointResidual
       Type(MATS3D)                :: plasticStrainFlow3D_0, plasticStrainFlow3D_1
       real(Kind = Kr)             :: viscouscumulatedDissipatedPlasticEnergyVariation
-      real(Kind = Kr),dimension(12) :: plasticSlipsVariation,plasticSlipIncrement
+      real(Kind = Kr),dimension(12) :: plasticSlipsVariation
    end type MEF90DefMechPlasticityCtx
 
 contains
@@ -971,7 +971,7 @@ contains
             PlasticSlipIncrement(s) = dt * myctx_ptr%ViscosityGamma0 * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
                                     & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            myctx_ptr%plasticSlipIncrement(s) = PlasticSlipIncrement(s)
+            myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
             !if (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0 > 0.0_Kr) then
             !   print *,"ResolvedShearStress(",s,") = ",ResolvedShearStress(s)
             !   print *,"PlasticSlipIncrement(",s,") = ",PlasticSlipIncrement(s)
@@ -1180,6 +1180,7 @@ contains
             myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
                  & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
             f(1) = f(1) + myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+            myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
          else
             PlasticSlipIncrement(s) = dt * myctx_ptr%eta * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
                                     & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
@@ -1253,6 +1254,7 @@ contains
       PetscReal                                          :: Sigma_33_PlaneStrain
       PetscInt                                           :: rateIndependentIter = 0
       PetscReal                                          :: viscousCumulatedDissipatedPlasticEnergyVariation
+      PetscInt                                           :: slip
 
       Call SectionRealDuplicate(MEF90DefMechCtx%cellDMMatSSec,plasticStrainSec,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(plasticStrainSec,MEF90DefMechCtx%cellDMMatSScatter,SCATTER_REVERSE,plasticStrain,ierr);CHKERRQ(ierr)
@@ -1595,8 +1597,20 @@ contains
 #endif
 
                   !plasticSlipsVariationLoc = 10.0_Kr
-                  PlasticityCtx%plasticSlipsVariation = PlasticityCtx%plasticSlipIncrement
-                  plasticSlipsVariationLoc = (/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1./) !PlasticityCtx%plasticSlipIncrement !PlasticityCtx%plasticSlipsVariation
+                  !print *,PlasticityCtx%plasticSlipsVariation
+                  plasticSlipsVariationLoc = PlasticityCtx%plasticSlipsVariation
+                  !plasticSlipsVariationLoc = 0.0_Kr
+                  Select Case (cellSetOptions%plasticityType)
+                     Case (MEF90DefMech_plasticityTypeCrystalSingleSlip,MEF90DefMech_plasticityTypeCrystalBCC)
+                        Do slip=1,12
+                           !PlasticityCtx%plasticSlipsVariation = PlasticityCtx%plasticSlipIncrement
+                           !plasticSlipsVariationLoc = PlasticityCtx%plasticSlipIncrement
+                           !print *,PlasticityCtx%plasticSlipsVariation(slip)
+                           !plasticSlipsVariationLoc(slip) = PlasticityCtx%plasticSlipsVariation(slip)
+                           !plasticSlipsVariationLoc = (/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1./) !PlasticityCtx%plasticSlipIncrement !PlasticityCtx%plasticSlipsVariation
+                        End Do
+                     Case Default
+                  End Select
 
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyVariationSec,cellID(cell),cumulatedDissipatedPlasticEnergyVariationLoc,ierr);CHKERRQ(ierr)
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyOldSec,cellID(cell),cumulatedDissipatedPlasticEnergyOldLoc,ierr);CHKERRQ(ierr)
