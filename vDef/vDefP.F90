@@ -295,12 +295,21 @@ Program CoupledPlasticityDamage
          End If
 
          If (MEF90DefMechGlobalOptions%plasticSlipsOffset > 0) Then
+<<<<<<< HEAD
             Call DMGetLocalVector(MEF90DefMechCtx%cellDMPlasticSlips,localVec,ierr);CHKERRQ(ierr)
             Call VecLoadExodusCell(MEF90DefMechCtx%cellDMPlasticSlips,localVec,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
                                          MEF90DefMechCtx%MEF90Ctx%fileExoUnit,MEF90GlobalOptions%timeSkip,MEF90DefMechGlobalOptions%plasticSlipsOffset,ierr);CHKERRQ(ierr)
             Call DMLocalToGlobalBegin(MEF90DefMechCtx%cellDMPlasticSlips,localVec,INSERT_VALUES,MEF90DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
             Call DMLocalToGlobalEnd(MEF90DefMechCtx%cellDMPlasticSlips,localVec,INSERT_VALUES,MEF90DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
             Call DMRestoreLocalVector(MEF90DefMechCtx%cellDMPlasticSlips,localVec,ierr);CHKERRQ(ierr)
+=======
+            Call DMGetLocalVector(MEF90DefMechCtx%cellDMVect,localVec,ierr);CHKERRQ(ierr)
+            Call VecLoadExodusCell(MEF90DefMechCtx%cellDMVect,localVec,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
+                                         MEF90DefMechCtx%MEF90Ctx%fileExoUnit,MEF90GlobalOptions%timeSkip,MEF90DefMechGlobalOptions%plasticSlipsOffset,ierr);CHKERRQ(ierr)
+            Call DMLocalToGlobalBegin(MEF90DefMechCtx%cellDMVect,localVec,INSERT_VALUES,MEF90DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+            Call DMLocalToGlobalEnd(MEF90DefMechCtx%cellDMVect,localVec,INSERT_VALUES,MEF90DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+            Call DMRestoreLocalVector(MEF90DefMechCtx%cellDMVect,localVec,ierr);CHKERRQ(ierr)
+>>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
          End If
 
          Call DMGetLocalVector(MEF90DefMechCtx%DMVect,localVec,ierr);CHKERRQ(ierr)

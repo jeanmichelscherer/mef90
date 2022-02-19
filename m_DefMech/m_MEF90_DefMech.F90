@@ -1161,7 +1161,11 @@ End Subroutine MEF90DefMechUpdateboundaryDamage
 
       If (MEF90DefMechGlobalOptions%plasticSlipsOffset > 0) Then
          If (Associated(MEF90DefMechCtx%plasticSlips)) Then
+<<<<<<< HEAD
             Call VecViewExodusCell(MEF90DefMechCtx%cellDMPlasticSlips,MEF90DefMechCtx%plasticSlips,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
+=======
+            Call VecViewExodusCell(MEF90DefMechCtx%cellDMVect,MEF90DefMechCtx%plasticSlips,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
+>>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
                                    MEF90DefMechCtx%MEF90Ctx%fileExoUnit,step,MEF90DefMechGlobalOptions%plasticSlipsOffset,ierr);CHKERRQ(ierr)
          Else
             Call PetscPrintf(PETSC_COMM_WORLD,"[WARNING] plasticSlips field not associated, not saving. Use -plasitcSlipsOffset 0 \n",ierr);CHKERRQ(ierr)

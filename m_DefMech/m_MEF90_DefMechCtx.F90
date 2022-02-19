@@ -30,7 +30,7 @@ Module m_MEF90_DefMechCtx_Type
       Type(MEF90Ctx_Type),pointer            :: MEF90Ctx
       Type(DM),pointer                       :: DM
       Type(DM)                               :: DMScal,DMVect,DMPlasticSlips                ! Remove all these
-      Type(DM)                               :: cellDMScal,cellDMVect, cellDMPlasticSlips   ! after switching to 
+      Type(DM)                               :: cellDMScal,cellDMVect,cellDMPlasticSlips   ! after switching to 
       Type(DM)                               :: DMMatS,cellDMMatS                           ! DMplex
       
       Type(VecScatter)                       :: DMScalScatter
@@ -43,8 +43,8 @@ Module m_MEF90_DefMechCtx_Type
       Type(VecScatter)                       :: cellDMPlasticSlipsScatter
       
       Type(SectionReal)                      :: DMSec
-      Type(SectionReal)                      :: DMScalSec,DMVectSec, DMPlasticSlipsSec              ! Remove all these
-      Type(SectionReal)                      :: cellDMScalSec,cellDMVectSec, cellDMPlasticSlipsSec  ! after switching to 
+      Type(SectionReal)                      :: DMScalSec,DMVectSec,DMPlasticSlipsSec              ! Remove all these
+      Type(SectionReal)                      :: cellDMScalSec,cellDMVectSec,cellDMPlasticSlipsSec  ! after switching to 
       Type(SectionReal)                      :: DMMatSSec,cellDMMatSSec                             ! DMplex
 
       Type(PetscViewer)                      :: globalEnergyViewer
@@ -687,7 +687,11 @@ Contains
       Call VecSet(DefMechCtx%stress,0.0_Kr,ierr);CHKERRQ(ierr)
 
       Allocate(DefMechCtx%plasticSlips,stat=ierr)
+<<<<<<< HEAD
       Call DMCreateGlobalVector(DefMechCtx%CellDMPlasticSlips,DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+=======
+      Call DMCreateGlobalVector(DefMechCtx%CellDMVect,DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+>>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
       Call PetscObjectSetName(DefMechCtx%plasticSlips,"plasticSlips",ierr);CHKERRQ(ierr)
       Call VecSet(DefMechCtx%plasticSlips,0.0_Kr,ierr);CHKERRQ(ierr)
    End Subroutine MEF90DefMechCtxCreateVectors
