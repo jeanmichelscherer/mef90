@@ -288,8 +288,6 @@ contains
       type(MEF90_MATS)                          :: xMatS
       real(Kind = Kr)                           :: lambda,mu,E,nu,PlasticMultiplierIncrement,sigmaeq,dt
       type(MatS3D)                              :: Strain,PlasticStrainFlow,Stress,TotalPlasticIncrement
-<<<<<<< HEAD
-
 
       xMatS = x(1:SIZEOFMEF90_MATS)
       !!! This is the fortran equivalent of casting ctx into a c_ptr
@@ -316,8 +314,6 @@ contains
          Strain%YY   = myctx_ptr%InelasticStrain%YY
          Strain%XY   = myctx_ptr%InelasticStrain%XY
          Strain%ZZ   = (-lambda*Trace(myctx_ptr%InelasticStrain) - 2*mu*Trace(myctx_ptr%plasticStrainPrevious))/(lambda + 2*mu)
-=======
->>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
 
          PlasticStrainFlow    = 0.0_Kr
          PlasticStrainFlow%XX = xMatS%XX-myctx_ptr%PlasticStrainOld%XX
@@ -920,7 +916,6 @@ contains
 !!!           Blaise Bourdin, LSU, <bourdin@lsu.edu>
 !!!
 !!!
-<<<<<<< HEAD
 
    subroutine FHG_CRYSTALSINGLESLIP(x,f,h,g,myctx) bind(c)
       use,intrinsic :: iso_c_binding
@@ -1191,278 +1186,6 @@ contains
          StiffnessA = ( (1.0_Kr - myctx_ptr%Damage)**2 /( 1.0_Kr + ( myctx_ptr%CoefficientLinSoft - 1.0_Kr )*(1.0_Kr - (1.0_Kr - myctx_ptr%Damage)**2 ) ) ) + myctx_ptr%residualStiffness
       endif
 
-=======
-
-   subroutine FHG_CRYSTALSINGLESLIP(x,f,h,g,myctx) bind(c)
-      use,intrinsic :: iso_c_binding
-      use m_MEF90
-
-      real(kind=c_double)                       :: x(*)
-      real(kind=c_double)                       :: f(*)
-      real(kind=c_double)                       :: h(*)
-      real(kind=c_double)                       :: g(*)
-      real(kind = Kr)                           :: StiffnessA
-      real(Kind = Kr)                           :: R11,R22,R33,R12,R23,R31,R21,R32,R13
-      
-      type(c_ptr),intent(in),value              :: myctx
-      type(MEF90DefMechPlasticityCtx),pointer   :: myctx_ptr
-      type(MEF90_MATS)                          :: xMatS
-      type(MEF90_MATS)                          :: InelasticStrain, PlasticStrainFlow, Stress
-      type(MatS3D)                              :: Strain3D, PlasticStrainFlow3D, Stress3D, Stress3DCrystal, MatrixMu, TotalPlasticIncrement, TotalPlasticIncrementCrystal
-      type(MAT3D)                               :: MatrixR
-      real(Kind = Kr),dimension(1)              :: ResolvedShearStress,PlasticSlipIncrement 
-      integer(Kind = Kr)                        :: s
-      type(Vect3D)                              :: n
-      type(Vect3D)                              :: m
-      real(Kind = Kr)                           :: normS, dt, fixed_point_norm
-      real(Kind = Kr),dimension(3,1)            :: n_s = reshape((/ 0., 1., 0./), (/3,1/)) !!! slip planes normals
-      real(Kind = Kr),dimension(3,1)            :: m_s = reshape((/ 1., 0., 0./), (/3,1/)) !!! slip directions
-
-      real(Kind = Kr)                           :: lambda,mu,E,nu
-      
-      !!! Casting x into a MEF90_MATS
-      xMatS = x(1:SIZEOFMEF90_MATS)
-      !!! This is the fortran equivalent of casting ctx into a c_ptr
-      call c_f_pointer(myctx,myctx_ptr)
-
-      !!! Select which softening young model
-      if (myctx_ptr%CoefficientLinSoft==0) then
-         StiffnessA = (1.0_Kr - myctx_ptr%Damage)**2 + myctx_ptr%residualStiffness
-      else
-         StiffnessA = ( (1.0_Kr - myctx_ptr%Damage)**2 /( 1.0_Kr + ( myctx_ptr%CoefficientLinSoft - 1.0_Kr )*(1.0_Kr - (1.0_Kr - myctx_ptr%Damage)**2 ) ) ) + myctx_ptr%residualStiffness
-      endif
-
-      !!! Q1: I would like to have PlasticStrainFlow as 3D tensor for both 2D and 3D cases,
-      !!!     because I need to enforce constraints on XZ, YZ and ZZ components of the plastic strain.
-      !!!     In 2D, xMatS has only 3 unknowns -> 3 equality constraints at max
-      !!!     But the TotalPlasticIncrement is necessarily 3D in crystal plasticity
-      PlasticStrainFlow = xMatS-myctx_ptr%PlasticStrainOld
-      Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS))*StiffnessA
-      !!! Q6: What difference does it make to multiply by myctx_ptr%HookesLaw in f(1)? 
-      !!!     Shoulw I multiply by StiffnessA in f(1) or on the equivalent stress in the yield criterion?
-      ! f(1)   = ( (myctx_ptr%HookesLaw * PlasticStrainFlow) .DotP. PlasticStrainFlow ) * StiffnessA / 2.0
-      ! f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow ) * StiffnessA / 2.0
-      ! f(1) = xMatS .DotP. xMatS
-
-#if MEF90_DIM==2
-      !!! If plane strain
-      E      = myctx_ptr%HookesLaw%YoungsModulus
-      nu     = myctx_ptr%HookesLaw%PoissonRatio
-      mu     = E / (1.0_Kr + nu) * .5_Kr
-      lambda = E * nu / (1.0_Kr + nu) / (1 - 2.0_Kr * nu)
-
-      Strain3D      = 0.0_Kr
-      Strain3D%XX   = myctx_ptr%InelasticStrain%XX
-      Strain3D%YY   = myctx_ptr%InelasticStrain%YY
-      Strain3D%XY   = myctx_ptr%InelasticStrain%XY
-
-      PlasticStrainFlow3D    = 0.0_Kr
-      PlasticStrainFlow3D%XX = xMatS%XX - myctx_ptr%PlasticStrainOld%XX
-      PlasticStrainFlow3D%YY = xMatS%YY - myctx_ptr%PlasticStrainOld%YY
-      PlasticStrainFlow3D%XY = xMatS%XY - myctx_ptr%PlasticStrainOld%XY
-      PlasticStrainFlow3D%ZZ = -( PlasticStrainFlow3D%XX + PlasticStrainFlow3D%YY )
-      !!! Q1: How could I get the out of plane stress ZZ other than doing the following (only valid for isotropic elasticity)
-      !!! Stress3D%ZZ  = lambda*(Trace(Strain)) + 2*mu*(Strain%ZZ+ Trace(xMatS))
-
-      Stress3D     = 0.0_Kr
-      Stress3D%XX  = Stress%XX
-      Stress3D%XY  = Stress%XY
-      Stress3D%YY  = Stress%YY
-      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ) ! lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+ Trace(xMatS))
-#elif MEF90_DIM==3
-      Stress3D             = Stress
-      Strain3D             = myctx_ptr%InelasticStrain
-      PlasticStrainFlow3D  = xMats - myctx_ptr%PlasticStrainOld
-#endif
-
-      !!! Q3: We compute MatrixR at each call, but it could be computed once for all
-      MatrixR    = 0.0_Kr
-      MatrixR%XX =  cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%XY =  sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%YX = -cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%YY = -sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%XZ =  sin(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
-      MatrixR%YZ =  cos(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
-      MatrixR%ZX =  sin(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
-      MatrixR%ZY = -cos(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
-      MatrixR%ZZ =  cos(myctx_ptr%Phi)
-        
-      Stress3DCrystal = MatRaRt(Stress3D,MatrixR) 
-
-      TotalPlasticIncrementCrystal = 0.0_Kr
-      TotalPlasticIncrement        = 0.0_Kr
-      
-      normS = (2.0_Kr*SQRT(1.0_Kr))
-      
-      !!! Q4: I would like to have access to delta t in order to compute the viscous plastic
-      !!!     slip increment. 
-      !!!     The total strain increment could also be useful, to implement a
-      !!!     rate-independent model based on Forest and Rubin 2020.
-      !!!     Can we also have access to the iteration counter of the current minimization step.
-      !!!     This is needed for the rate-independent penalization, see Schmidt-Baldassari 2003.
-      dt = 0.1_Kr !myctx_ptr%number_of_iterations !L1SQP !numberOfIterations !iter !0.1
-
-      !!! Q5: Throw an error if the user attempts tu use isPlaneStress with this plastic criterion
-
-      f(1) = 0.5_Kr * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
-      Do s = 1,1
-         m = m_s(:,s) 
-         n = n_s(:,s) 
-         !!! Q3: We compute MatrixMu at each call, but it could be computed once for all
-         MatrixMu = ((m .TensP. n) + (n .TensP. m)) / normS
-      
-         ResolvedShearStress(s) =  Stress3DCrystal .DotP. MatrixMu
-         !print *,"#########################################"
-         !print *,"xMats = ",xMats
-         !print *,"MatrixMu = ",MatrixMu
-         !print *,"Stress = ",Stress
-         !print *,"Stress3D = ",Stress3D
-         !print *,"Stress3DCrystal = ",Stress3DCrystal
-         !print *,"ResolvedShearStress(",s,") = ",ResolvedShearStress(s)
-         
-         if (myctx_ptr%isViscousPlasticity) then 
-            !!! Q2: I would like to save PlasticSlipIncrement(s) for each s in the output Exodus file
-            !!!     Can we add additionnal internal variables to xMatS (hardening variables)
-            PlasticSlipIncrement(s) = dt * myctx_ptr%ViscosityGamma0 * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
-                                    & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
-            TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
-            !if (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0 > 0.0_Kr) then
-            !   print *,"ResolvedShearStress(",s,") = ",ResolvedShearStress(s)
-            !   print *,"PlasticSlipIncrement(",s,") = ",PlasticSlipIncrement(s)
-            !endif            
-!#if MEF90_DIM==2
-            !!! h = PlasticStrainFlow3D - TotalPlasticIncrement 
-            !!! h(1) = PlasticStrainFlow%XX - TotalPlasticIncrement%XX
-            !!! h(2) = PlasticStrainFlow%XY - TotalPlasticIncrement%XY
-            !!! h(3) = PlasticStrainFlow%YY - TotalPlasticIncrement%YY
-            !!! Q1: possible workaround? Too many equality constraints in this form
-            !!! h(4) = 0.0_Kr - TotalPlasticIncrement%XZ
-            !!! h(5) = 0.0_Kr - TotalPlasticIncrement%YZ
-            !!! h(6) = -( PlasticStrainFlow%XX + PlasticStrainFlow%YY ) - TotalPlasticIncrement%ZZ
-!#elif MEF90_DIM==3
-            !h(1) = PlasticStrainFlow%XX - TotalPlasticIncrement%XX
-            !h(2) = PlasticStrainFlow%XY - TotalPlasticIncrement%XY
-            !h(3) = PlasticStrainFlow%YY - TotalPlasticIncrement%YY
-            !h(4) = PlasticStrainFlow%XZ - TotalPlasticIncrement%XZ
-            !h(5) = PlasticStrainFlow%YZ - TotalPlasticIncrement%YZ
-            !h(6) = PlasticStrainFlow%ZZ - TotalPlasticIncrement%ZZ
-!#endif       
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
-                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
-         else
-            ! Implementation based on Schmidt-Baldassari, CMAME 2003
-            !if (i==0) then
-            !   tmp = 0.0_Kr
-            !else
-            !   tmp = PlasticSlipIncrement(s)
-            !end if
-            PlasticSlipIncrement(s) = dt * myctx_ptr%eta * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
-                                    & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
-                                    ! SIGN(1.0_Kr, ResolvedShearStress(s)) * MAX( PlasticSlipIncrement(s) + dt * myctx_ptr%eta *&
-                                    ! & ((ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0) , 0. )
-            TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)         
-
-            !fixed_point_norm = fixed_point_norm + ABS( (PlasticStrainFlow3D .DotP. MatrixMu) - PlasticSlipIncrement(s) )
-            !h(2) = fixed_point_norm
-            !h(1) = PlasticStrainFlow%XX - TotalPlasticIncrement%XX
-            !h(2) = PlasticStrainFlow%XY - TotalPlasticIncrement%XY
-            !h(3) = PlasticStrainFlow%YY - TotalPlasticIncrement%YY
-!#if MEF90_DIM==3
-!            h(4) = PlasticStrainFlow%XZ - TotalPlasticIncrement%XZ
-!            h(5) = PlasticStrainFlow%YZ - TotalPlasticIncrement%YZ
-!            h(6) = PlasticStrainFlow%ZZ - TotalPlasticIncrement%ZZ
-!#endif               
-            !g(s) = ABS( tmp - PlasticSlipIncrement(s) ) - 1.0e-8 ! fixed point is reached
-            
-            ! OR ill-posed inequality constraints
-            !g(s) = ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0
-            !TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
-                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
-            !f(1) = f(1) + 0.5_Kr * (dt/myctx_ptr%eta) * MAX(0.0_Kr, ABS(PlasticSlipIncrement(s)/dt) + myctx_ptr%eta*(ABS(ResolvedShearStress(s))&
-            !     & -  myctx_ptr%YieldTau0))**2 - (ABS(PlasticSlipIncrement(s))/dt)**2
-         endif
-         f(1) = f(1) + (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) 
-      End Do
-      TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
-      h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
-
-                  
-      !myctx_ptr%rateIndependentFixedPointResidual = NORM(TotalPlasticIncrement - myctx_ptr%PlasticStrainFlow3D)
-                                                    ! ABS( (PlasticStrainFlow3D .DotP. MatrixMu) - PlasticSlipIncrement(s) )
-
-      !print *,"TotalPlasticIncrement = ",TotalPlasticIncrement
-      !print *,"myctx_ptr%PlasticStrainOld = ",myctx_ptr%PlasticStrainOld
-      !print *,"h(1) = ",h(1)
-      !print *,"h(2) = ",h(2)
-      !print *,"h(3) = ",h(3)
-      !print *,"\n"
-      !print *, "eta = ", eta
-      !print *, "fixed_point_nomr = ", fixed_point_norm
-      !print *,"eta = ", myctx_ptr%eta
-      !write(*,*) "myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = ", myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
-        
-   end subroutine FHG_CRYSTALSINGLESLIP
-
-
-#undef __FUNCT__
-#define __FUNCT__ "FHG_CRYSTALBCC"
-!!!
-!!!
-!!!  fhg: BCC Crystal Plasticity (octahedral): equivalent to FCC in small strains
-!!!
-!!!  (c) 2022 Jean-Michel Scherer, Caltech <scherer@caltech.edu>,
-!!!           Blaise Bourdin, LSU, <bourdin@lsu.edu>
-!!!
-!!!
-
-   subroutine FHG_CRYSTALBCC(x,f,h,g,myctx) bind(c)
-      use,intrinsic :: iso_c_binding
-      use m_MEF90
-
-      real(kind=c_double)                       :: x(*)
-      real(kind=c_double)                       :: f(*)
-      real(kind=c_double)                       :: h(*)
-      real(kind=c_double)                       :: g(*)
-      real(kind = Kr)                           :: StiffnessA
-      real(Kind = Kr)                           :: R11,R22,R33,R12,R23,R31,R21,R32,R13
-      
-      type(c_ptr),intent(in),value              :: myctx
-      type(MEF90DefMechPlasticityCtx),pointer   :: myctx_ptr
-      type(MEF90_MATS)                          :: xMatS
-      type(MEF90_MATS)                          :: InelasticStrain, PlasticStrainFlow, Stress
-      type(MatS3D)                              :: Strain3D, PlasticStrainFlow3D, Stress3D, Stress3DCrystal, MatrixMu, TotalPlasticIncrement, TotalPlasticIncrementCrystal
-      type(MAT3D)                               :: MatrixR
-      real(Kind = Kr),dimension(12)             :: ResolvedShearStress,PlasticSlipIncrement 
-      integer(Kind = Kr)                        :: s, active
-      type(Vect3D)                              :: n
-      type(Vect3D)                              :: m
-      real(Kind = Kr)                           :: normS, dt
-                                                !!! slip systems nomenclature:
-                                                !!!              Bd,B4         Ba,B2         Bc,B5         Db,D4         Dc,D1         Da,D6
-                                                !!!              Ab,A2         Ad,A6         Ac,A3         Cb,C5         Ca,C3         Cd,C1
-      real(Kind = Kr),dimension(3,12)           :: n_s = reshape((/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1.,   0., 1., 1.,   1., 1., 0., &
-                                                                  & 0.,-1., 1.,   1., 1., 0.,   1., 0., 1.,  -1., 1., 0.,   1., 0., 1.,   0., 1., 1.  /), (/3,12/)) !!! slip planes normals
-      real(Kind = Kr),dimension(3,12)           :: m_s = reshape((/ 1., 1., 1.,   1., 1., 1.,   1., 1., 1.,   1.,-1., 1.,   1.,-1., 1.,   1.,-1., 1., &
-                                                                  &-1., 1., 1.,  -1., 1., 1.,  -1., 1., 1.,  -1.,-1., 1.,  -1.,-1., 1.,  -1.,-1., 1.  /), (/3,12/)) !!! slip directions
-      real(Kind = Kr)                           :: lambda,mu,E,nu
-      
-      !!! Casting x into a MEF90_MATS
-      xMatS = x(1:SIZEOFMEF90_MATS)
-      !!! This is the fortran equivalent of casting ctx into a c_ptr
-      call c_f_pointer(myctx,myctx_ptr)
-
-      !!! Select which softening young model
-      if (myctx_ptr%CoefficientLinSoft==0) then
-         StiffnessA = (1.0_Kr - myctx_ptr%Damage)**2 + myctx_ptr%residualStiffness
-      else
-         StiffnessA = ( (1.0_Kr - myctx_ptr%Damage)**2 /( 1.0_Kr + ( myctx_ptr%CoefficientLinSoft - 1.0_Kr )*(1.0_Kr - (1.0_Kr - myctx_ptr%Damage)**2 ) ) ) + myctx_ptr%residualStiffness
-      endif
-
->>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
       PlasticStrainFlow = xMatS-myctx_ptr%PlasticStrainOld
       Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS))*StiffnessA
       ! f(1)   = ( (myctx_ptr%HookesLaw * PlasticStrainFlow) .DotP. PlasticStrainFlow ) * StiffnessA / 2.0
@@ -1630,13 +1353,8 @@ contains
       Call SectionRealDuplicate(MEF90DefMechCtx%cellDMScalSec,cumulatedDissipatedPlasticEnergyOldSec,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(cumulatedDissipatedPlasticEnergyOldSec,MEF90DefMechCtx%cellDMScalScatter,SCATTER_REVERSE,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
 
-<<<<<<< HEAD
       Call SectionRealDuplicate(MEF90DefMechCtx%cellDMPlasticSlipsSec,plasticSlipsVariationSec,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMPlasticSlipsScatter,SCATTER_REVERSE,plasticSlipsVariation,ierr);CHKERRQ(ierr)
-=======
-      Call SectionRealDuplicate(MEF90DefMechCtx%cellDMVectSec,plasticSlipsVariationSec,ierr);CHKERRQ(ierr)
-      Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMVectScatter,SCATTER_REVERSE,plasticSlipsVariation,ierr);CHKERRQ(ierr)
->>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
 
       Call SectionRealDuplicate(MEF90DefMechCtx%DMVectSec,xSec,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(xSec,MEF90DefMechCtx%DMVectScatter,SCATTER_REVERSE,x,ierr);CHKERRQ(ierr)
@@ -1961,7 +1679,7 @@ contains
                   !print *,PlasticityCtx%plasticSlipsVariation
                   plasticSlipsVariationLoc = PlasticityCtx%plasticSlipsVariation
                   !plasticSlipsVariationLoc = 0.0_Kr
-<<<<<<< HEAD
+
                   !Select Case (cellSetOptions%plasticityType)
                   !   Case (MEF90DefMech_plasticityTypeCrystalSingleSlip,MEF90DefMech_plasticityTypeCrystalBCC)
                   !      Do slip=1,12
@@ -1973,19 +1691,6 @@ contains
                   !      End Do
                   !   Case Default
                   !End Select
-=======
-                  Select Case (cellSetOptions%plasticityType)
-                     Case (MEF90DefMech_plasticityTypeCrystalSingleSlip,MEF90DefMech_plasticityTypeCrystalBCC)
-                        Do slip=1,12
-                           !PlasticityCtx%plasticSlipsVariation = PlasticityCtx%plasticSlipIncrement
-                           !plasticSlipsVariationLoc = PlasticityCtx%plasticSlipIncrement
-                           !print *,PlasticityCtx%plasticSlipsVariation(slip)
-                           !plasticSlipsVariationLoc(slip) = PlasticityCtx%plasticSlipsVariation(slip)
-                           !plasticSlipsVariationLoc = (/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1./) !PlasticityCtx%plasticSlipIncrement !PlasticityCtx%plasticSlipsVariation
-                        End Do
-                     Case Default
-                  End Select
->>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
 
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyVariationSec,cellID(cell),cumulatedDissipatedPlasticEnergyVariationLoc,ierr);CHKERRQ(ierr)
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyOldSec,cellID(cell),cumulatedDissipatedPlasticEnergyOldLoc,ierr);CHKERRQ(ierr)
@@ -2010,11 +1715,8 @@ contains
       !!! forward data plasticStrain & cumulatedDissipatedPlasticEnergy
       Call SectionRealToVec(plasticStrainSec,MEF90DefMechCtx%cellDMMatSScatter,SCATTER_FORWARD,MEF90DefMechCtx%plasticStrain,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(cumulatedDissipatedPlasticEnergyVariationSec,MEF90DefMechCtx%cellDMScalScatter,SCATTER_FORWARD,cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
-<<<<<<< HEAD
+
       Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMPlasticSlipsScatter,SCATTER_FORWARD,plasticSlipsVariation,ierr);CHKERRQ(ierr)
-=======
-      Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMVectScatter,SCATTER_FORWARD,plasticSlipsVariation,ierr);CHKERRQ(ierr)
->>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
 
       Call SectionRealDestroy(plasticStrainSec,ierr);CHKERRQ(ierr)
       Call SectionRealDestroy(plasticStrainOldSec,ierr);CHKERRQ(ierr)

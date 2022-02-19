@@ -687,11 +687,7 @@ Contains
       Call VecSet(DefMechCtx%stress,0.0_Kr,ierr);CHKERRQ(ierr)
 
       Allocate(DefMechCtx%plasticSlips,stat=ierr)
-<<<<<<< HEAD
       Call DMCreateGlobalVector(DefMechCtx%CellDMPlasticSlips,DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
-=======
-      Call DMCreateGlobalVector(DefMechCtx%CellDMVect,DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
->>>>>>> afecdfeec4255a35ecadcdc550af0e5425b7d056
       Call PetscObjectSetName(DefMechCtx%plasticSlips,"plasticSlips",ierr);CHKERRQ(ierr)
       Call VecSet(DefMechCtx%plasticSlips,0.0_Kr,ierr);CHKERRQ(ierr)
    End Subroutine MEF90DefMechCtxCreateVectors
