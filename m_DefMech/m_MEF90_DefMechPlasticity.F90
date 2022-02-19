@@ -1274,8 +1274,8 @@ contains
       Call SectionRealDuplicate(MEF90DefMechCtx%cellDMScalSec,cumulatedDissipatedPlasticEnergyOldSec,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(cumulatedDissipatedPlasticEnergyOldSec,MEF90DefMechCtx%cellDMScalScatter,SCATTER_REVERSE,cumulatedDissipatedPlasticEnergyOld,ierr);CHKERRQ(ierr)
 
-      Call SectionRealDuplicate(MEF90DefMechCtx%cellDMVectSec,plasticSlipsVariationSec,ierr);CHKERRQ(ierr)
-      Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMVectScatter,SCATTER_REVERSE,plasticSlipsVariation,ierr);CHKERRQ(ierr)
+      Call SectionRealDuplicate(MEF90DefMechCtx%cellDMPlasticSlipsSec,plasticSlipsVariationSec,ierr);CHKERRQ(ierr)
+      Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMPlasticSlipsScatter,SCATTER_REVERSE,plasticSlipsVariation,ierr);CHKERRQ(ierr)
 
       Call SectionRealDuplicate(MEF90DefMechCtx%DMVectSec,xSec,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(xSec,MEF90DefMechCtx%DMVectScatter,SCATTER_REVERSE,x,ierr);CHKERRQ(ierr)
@@ -1600,17 +1600,17 @@ contains
                   !print *,PlasticityCtx%plasticSlipsVariation
                   plasticSlipsVariationLoc = PlasticityCtx%plasticSlipsVariation
                   !plasticSlipsVariationLoc = 0.0_Kr
-                  Select Case (cellSetOptions%plasticityType)
-                     Case (MEF90DefMech_plasticityTypeCrystalSingleSlip,MEF90DefMech_plasticityTypeCrystalBCC)
-                        Do slip=1,12
-                           !PlasticityCtx%plasticSlipsVariation = PlasticityCtx%plasticSlipIncrement
-                           !plasticSlipsVariationLoc = PlasticityCtx%plasticSlipIncrement
-                           !print *,PlasticityCtx%plasticSlipsVariation(slip)
-                           !plasticSlipsVariationLoc(slip) = PlasticityCtx%plasticSlipsVariation(slip)
-                           !plasticSlipsVariationLoc = (/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1./) !PlasticityCtx%plasticSlipIncrement !PlasticityCtx%plasticSlipsVariation
-                        End Do
-                     Case Default
-                  End Select
+                  !Select Case (cellSetOptions%plasticityType)
+                  !   Case (MEF90DefMech_plasticityTypeCrystalSingleSlip,MEF90DefMech_plasticityTypeCrystalBCC)
+                  !      Do slip=1,12
+                  !         !PlasticityCtx%plasticSlipsVariation = PlasticityCtx%plasticSlipIncrement
+                  !         !plasticSlipsVariationLoc = PlasticityCtx%plasticSlipIncrement
+                  !         !print *,PlasticityCtx%plasticSlipsVariation(slip)
+                  !         !plasticSlipsVariationLoc(slip) = PlasticityCtx%plasticSlipsVariation(slip)
+                  !         !plasticSlipsVariationLoc = (/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1./) !PlasticityCtx%plasticSlipIncrement !PlasticityCtx%plasticSlipsVariation
+                  !      End Do
+                  !   Case Default
+                  !End Select
 
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyVariationSec,cellID(cell),cumulatedDissipatedPlasticEnergyVariationLoc,ierr);CHKERRQ(ierr)
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyOldSec,cellID(cell),cumulatedDissipatedPlasticEnergyOldLoc,ierr);CHKERRQ(ierr)
@@ -1635,7 +1635,7 @@ contains
       !!! forward data plasticStrain & cumulatedDissipatedPlasticEnergy
       Call SectionRealToVec(plasticStrainSec,MEF90DefMechCtx%cellDMMatSScatter,SCATTER_FORWARD,MEF90DefMechCtx%plasticStrain,ierr);CHKERRQ(ierr)
       Call SectionRealToVec(cumulatedDissipatedPlasticEnergyVariationSec,MEF90DefMechCtx%cellDMScalScatter,SCATTER_FORWARD,cumulatedDissipatedPlasticEnergyVariation,ierr);CHKERRQ(ierr)
-      Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMVectScatter,SCATTER_FORWARD,plasticSlipsVariation,ierr);CHKERRQ(ierr)
+      Call SectionRealToVec(plasticSlipsVariationSec,MEF90DefMechCtx%cellDMPlasticSlipsScatter,SCATTER_FORWARD,plasticSlipsVariation,ierr);CHKERRQ(ierr)
 
       Call SectionRealDestroy(plasticStrainSec,ierr);CHKERRQ(ierr)
       Call SectionRealDestroy(plasticStrainOldSec,ierr);CHKERRQ(ierr)

@@ -29,21 +29,23 @@ Module m_MEF90_DefMechCtx_Type
       PetscBag,Dimension(:),Pointer          :: MaterialPropertiesBag
       Type(MEF90Ctx_Type),pointer            :: MEF90Ctx
       Type(DM),pointer                       :: DM
-      Type(DM)                               :: DMScal,DMVect           ! Remove all these
-      Type(DM)                               :: cellDMScal,cellDMVect   ! after switching to 
-      Type(DM)                               :: DMMatS,cellDMMatS       ! DMplex
+      Type(DM)                               :: DMScal,DMVect,DMPlasticSlips                ! Remove all these
+      Type(DM)                               :: cellDMScal,cellDMVect, cellDMPlasticSlips   ! after switching to 
+      Type(DM)                               :: DMMatS,cellDMMatS                           ! DMplex
       
       Type(VecScatter)                       :: DMScalScatter
       Type(VecScatter)                       :: DMVectScatter
       Type(VecScatter)                       :: DMMatSScatter
+      Type(VecScatter)                       :: DMPlasticSlipsScatter
       Type(VecScatter)                       :: cellDMScalScatter
       Type(VecScatter)                       :: cellDMVectScatter
       Type(VecScatter)                       :: cellDMMatSScatter
+      Type(VecScatter)                       :: cellDMPlasticSlipsScatter
       
       Type(SectionReal)                      :: DMSec
-      Type(SectionReal)                      :: DMScalSec,DMVectSec           ! Remove all these
-      Type(SectionReal)                      :: cellDMScalSec,cellDMVectSec   ! after switching to 
-      Type(SectionReal)                      :: DMMatSSec,cellDMMatSSec       ! DMplex
+      Type(SectionReal)                      :: DMScalSec,DMVectSec, DMPlasticSlipsSec              ! Remove all these
+      Type(SectionReal)                      :: cellDMScalSec,cellDMVectSec, cellDMPlasticSlipsSec  ! after switching to 
+      Type(SectionReal)                      :: DMMatSSec,cellDMMatSSec                             ! DMplex
 
       Type(PetscViewer)                      :: globalEnergyViewer
       Type(PetscViewer),Dimension(:),Pointer :: setEnergyViewer
@@ -461,6 +463,14 @@ Contains
       Call DMMeshClone(Mesh,DefMechCtx%cellDMMatS,ierr);CHKERRQ(ierr)
       Call DMMeshSetMaxDof(DefMechCtx%cellDMMatS,(dim*(dim+1))/2,ierr);CHKERRQ(ierr) 
       Call DMSetBlockSize(DefMechCtx%cellDMMatS,(dim*(dim+1))/2,ierr);CHKERRQ(ierr)
+      
+      Call DMMeshClone(Mesh,DefMechCtx%cellDMPlasticSlips,ierr);CHKERRQ(ierr)
+      Call DMMeshSetMaxDof(DefMechCtx%cellDMPlasticSlips,12,ierr);CHKERRQ(ierr) 
+      Call DMSetBlockSize(DefMechCtx%cellDMPlasticSlips,12,ierr);CHKERRQ(ierr)
+      
+      Call DMMeshClone(Mesh,DefMechCtx%DMPlasticSlips,ierr);CHKERRQ(ierr)
+      Call DMMeshSetMaxDof(DefMechCtx%DMPlasticSlips,12,ierr);CHKERRQ(ierr) 
+      Call DMSetBlockSize(DefMechCtx%DMPlasticSlips,12,ierr);CHKERRQ(ierr)
 
       Call PetscBagCreate(MEF90Ctx%comm,sizeofMEF90DefMechGlobalOptions,DefMechCtx%GlobalOptionsBag,ierr);CHKERRQ(ierr)
       
@@ -576,6 +586,16 @@ Contains
       Call DMMeshSetSectionReal(DefMechCtx%cellDMMatS,"default",DefMechCtx%cellDMMatSSec,ierr);CHKERRQ(ierr)
       Call DMSetBlockSize(DefMechCtx%cellDMMatS,(dim*(dim+1))/2,ierr);CHKERRQ(ierr)
       Call DMMeshCreateGlobalScatter(DefMechCtx%cellDMMatS,DefMechCtx%cellDMMatSSec,DefMechCtx%cellDMMatSScatter,ierr);CHKERRQ(ierr)
+      
+      Call DMMeshGetVertexSectionReal(DefMechCtx%DMPlasticSlips,"default",12,DefMechCtx%DMPlasticSlipsSec,ierr);CHKERRQ(ierr)
+      Call DMMeshSetSectionReal(DefMechCtx%DMPlasticSlips,"default",DefMechCtx%DMPlasticSlipsSec,ierr);CHKERRQ(ierr)
+      Call DMSetBlockSize(DefMechCtx%DMPlasticSlips,12,ierr);CHKERRQ(ierr)
+      Call DMMeshCreateGlobalScatter(DefMechCtx%DMPlasticSlips,DefMechCtx%DMPlasticSlipsSec,DefMechCtx%DMPlasticSlipsScatter,ierr);CHKERRQ(ierr)
+   
+      Call DMMeshGetCellSectionReal(DefMechCtx%cellDMPlasticSlips,"default",12,DefMechCtx%cellDMPlasticSlipsSec,ierr);CHKERRQ(ierr)
+      Call DMMeshSetSectionReal(DefMechCtx%cellDMPlasticSlips,"default",DefMechCtx%cellDMPlasticSlipsSec,ierr);CHKERRQ(ierr)
+      Call DMSetBlockSize(DefMechCtx%CellDMPlasticSlips,12,ierr);CHKERRQ(ierr)
+      Call DMMeshCreateGlobalScatter(DefMechCtx%cellDMPlasticSlips,DefMechCtx%cellDMPlasticSlipsSec,DefMechCtx%cellDMPlasticSlipsScatter,ierr);CHKERRQ(ierr)
    End Subroutine MEF90DefMechCtxSetSections
 
 #undef __FUNCT__
@@ -667,7 +687,7 @@ Contains
       Call VecSet(DefMechCtx%stress,0.0_Kr,ierr);CHKERRQ(ierr)
 
       Allocate(DefMechCtx%plasticSlips,stat=ierr)
-      Call DMCreateGlobalVector(DefMechCtx%CellDMVect,DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
+      Call DMCreateGlobalVector(DefMechCtx%CellDMPlasticSlips,DefMechCtx%plasticSlips,ierr);CHKERRQ(ierr)
       Call PetscObjectSetName(DefMechCtx%plasticSlips,"plasticSlips",ierr);CHKERRQ(ierr)
       Call VecSet(DefMechCtx%plasticSlips,0.0_Kr,ierr);CHKERRQ(ierr)
    End Subroutine MEF90DefMechCtxCreateVectors
