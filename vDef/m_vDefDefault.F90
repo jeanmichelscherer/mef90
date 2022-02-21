@@ -35,7 +35,7 @@ module m_vDefDefault
                                                          0,                       & ! plasticStrainOffset
                                                          6,                       & ! StressOffset
                                                          9,                       & ! cumulatedPlasticDissipationOffset
-                                                         13,                      & ! plasticSlipsOffset
+                                                         0,                       & ! plasticSlipsOffset
                                                          MEF90Scaling_Linear,     & ! boundaryDisplacementScaling
                                                          MEF90Scaling_CST,        & ! displacementLowerBoundScaling
                                                          MEF90Scaling_CST,        & ! displacementUpperBoundScaling
@@ -72,7 +72,7 @@ module m_vDefDefault
                                                          0,                       & ! plasticStrainOffset
                                                          7,                       & ! StressOffset
                                                          13,                      & ! cumulatedPlasticDissipationOffset
-                                                         18,                      & ! plasticSlipsOffset
+                                                         0,                       & ! plasticSlipsOffset
                                                          MEF90Scaling_Linear,     & ! boundaryDisplacementScaling
                                                          MEF90Scaling_CST,        & ! displacementLowerBoundScaling
                                                          MEF90Scaling_CST,        & ! displacementUpperBoundScaling

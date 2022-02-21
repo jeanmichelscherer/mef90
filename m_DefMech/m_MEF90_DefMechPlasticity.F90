@@ -301,85 +301,11 @@ contains
          StiffnessA = ( (1.0_Kr - myctx_ptr%Damage)**2 /( 1.0_Kr + ( myctx_ptr%CoefficientLinSoft - 1.0_Kr )*(1.0_Kr - (1.0_Kr - myctx_ptr%Damage)**2 ) ) ) + myctx_ptr%residualStiffness
          StiffnessB = (1.0_Kr - myctx_ptr%Damage)**myctx_ptr%DuctileCouplingPower + myctx_ptr%residualStiffness
       endif
-
-      E     = myctx_ptr%HookesLaw%YoungsModulus
-      nu    = myctx_ptr%HookesLaw%PoissonRatio
-      mu    = E / (1.0_Kr + nu) * .5_Kr
-      lambda  = E * nu / (1.0_Kr + nu) / (1 - 2.0_Kr * nu)
-
-      if ( myctx_ptr%isPlaneStress .eqv. .true.) then
-         !!! If plane stress
-         Strain      = 0.0_Kr
-         Strain%XX   = myctx_ptr%InelasticStrain%XX
-         Strain%YY   = myctx_ptr%InelasticStrain%YY
-         Strain%XY   = myctx_ptr%InelasticStrain%XY
-         Strain%ZZ   = (-lambda*Trace(myctx_ptr%InelasticStrain) - 2*mu*Trace(myctx_ptr%plasticStrainPrevious))/(lambda + 2*mu)
-
-         PlasticStrainFlow    = 0.0_Kr
-         PlasticStrainFlow%XX = xMatS%XX-myctx_ptr%PlasticStrainOld%XX
-         PlasticStrainFlow%YY = xMatS%YY-myctx_ptr%PlasticStrainOld%YY
-         PlasticStrainFlow%XY = xMatS%XY-myctx_ptr%PlasticStrainOld%XY
-         PlasticStrainFlow%ZZ = -( PlasticStrainFlow%XX + PlasticStrainFlow%YY )
-
-         Stress    = 0.0_Kr
-         Stress%XX = lambda*(Trace(Strain)) + 2*mu*(Strain%XX-xMatS%XX)
-         Stress%YY = lambda*(Trace(Strain)) + 2*mu*(Strain%YY-xMatS%YY)
-         Stress%XY = 2*mu*(Strain%XY-xMatS%XY)
-         Stress%ZZ = lambda*(Trace(Strain)) + 2*mu*(Strain%ZZ + Trace(xMatS) )
+      
+      if ( myctx_ptr%isNoPlCoupling .eqv. .true.) then
+         StiffnessB = 1.0_Kr
       else
-         !!! If plane strain
-         Strain      = 0.0_Kr
-         Strain%XX   = myctx_ptr%InelasticStrain%XX
-         Strain%YY   = myctx_ptr%InelasticStrain%YY
-         Strain%XY   = myctx_ptr%InelasticStrain%XY
-
-         PlasticStrainFlow    = 0.0_Kr
-         PlasticStrainFlow%XX = xMatS%XX-myctx_ptr%PlasticStrainOld%XX
-         PlasticStrainFlow%YY = xMatS%YY-myctx_ptr%PlasticStrainOld%YY
-         PlasticStrainFlow%XY = xMatS%XY-myctx_ptr%PlasticStrainOld%XY
-         PlasticStrainFlow%ZZ = -( PlasticStrainFlow%XX + PlasticStrainFlow%YY )
-
-         Stress    = 0.0_Kr
-         Stress%XX = lambda*(Trace(Strain)) + 2*mu*(Strain%XX-xMatS%XX)
-         Stress%YY = lambda*(Trace(Strain)) + 2*mu*(Strain%YY-xMatS%YY)
-         Stress%XY = 2*mu*(Strain%XY-xMatS%XY)
-         Stress%ZZ = lambda*(Trace(Strain)) + 2*mu*(Strain%ZZ+ Trace(xMatS))
-      endif
-   
-      dt = 0.1
-      !f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow )
-      !g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - myctx_ptr%YieldStress
-      f(1) = StiffnessA * 0.5_Kr * (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS)) .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
-      sigmaeq = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) )
-      if (myctx_ptr%isViscousPlasticity) then 
-         PlasticMultiplierIncrement = dt * myctx_ptr%ViscosityGamma0 * MAX( (sigmaeq - myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
-         TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * StiffnessA * deviatoricPart(Stress)
-         f(1) = f(1) + (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
-              & (ABS(PlasticMultiplierIncrement)/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-      else
-         PlasticMultiplierIncrement = dt * myctx_ptr%eta * MAX( (sigmaeq -  myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
-         TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * StiffnessA * deviatoricPart(Stress)
-         f(1) = f(1) + (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
-              & (ABS(PlasticMultiplierIncrement)/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-      endif
-      f(1) = f(1) + (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) 
-      h(1) = NORM(PlasticStrainFlow - TotalPlasticIncrement)
-      !print *,"h(1) = ",h(1)
-
-
-   end subroutine FHG_VONMISESVISCOUS
-
-      xMatS = x(1:SIZEOFMEF90_MATS)
-      !!! This is the fortran equivalent of casting ctx into a c_ptr
-      call c_f_pointer(myctx,myctx_ptr)
-
-      !!! Select which softening young model
-      if (myctx_ptr%CoefficientLinSoft==0) then
-         StiffnessA = (1.0_Kr - myctx_ptr%Damage)**2 + myctx_ptr%residualStiffness
-         StiffnessB = (1.0_Kr - myctx_ptr%Damage)**myctx_ptr%DuctileCouplingPower + myctx_ptr%residualStiffness
-      else
-         StiffnessA = ( (1.0_Kr - myctx_ptr%Damage)**2 /( 1.0_Kr + ( myctx_ptr%CoefficientLinSoft - 1.0_Kr )*(1.0_Kr - (1.0_Kr - myctx_ptr%Damage)**2 ) ) ) + myctx_ptr%residualStiffness
-         StiffnessB = (1.0_Kr - myctx_ptr%Damage)**myctx_ptr%DuctileCouplingPower + myctx_ptr%residualStiffness
+         StiffnessB = ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )
       endif
 
       E     = myctx_ptr%HookesLaw%YoungsModulus
@@ -430,23 +356,25 @@ contains
       !f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow )
       !g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - myctx_ptr%YieldStress
       f(1) = StiffnessA * 0.5_Kr * (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS)) .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
-      sigmaeq = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) )
+      sigmaeq = sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) )
       if (myctx_ptr%isViscousPlasticity) then 
-         PlasticMultiplierIncrement = dt * myctx_ptr%ViscosityGamma0 * MAX( (sigmaeq - myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
-         TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * StiffnessA * deviatoricPart(Stress)
-         f(1) = f(1) + (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
+         PlasticMultiplierIncrement = dt * myctx_ptr%ViscosityGamma0 * MAX( (StiffnessA*sigmaeq - StiffnessB*myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
+         !PlasticMultiplierIncrement = dt * myctx_ptr%ViscosityGamma0 * MAX( (sigmaeq - StiffnessB*myctx_ptr%YieldStress) / (StiffnessB*myctx_ptr%YieldStress) , 0. )**myctx_ptr%ViscosityN
+         TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * deviatoricPart(Stress)
+         myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) +&
+              & (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
               & (ABS(PlasticMultiplierIncrement)/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
+         f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
       else
-         PlasticMultiplierIncrement = dt * myctx_ptr%eta * MAX( (sigmaeq -  myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
-         TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * StiffnessA * deviatoricPart(Stress)
-         f(1) = f(1) + (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
+         PlasticMultiplierIncrement = dt * myctx_ptr%eta * MAX( (StiffnessA*sigmaeq -  StiffnessB*myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
+         !PlasticMultiplierIncrement = dt * myctx_ptr%eta * MAX( (sigmaeq -  StiffnessB*myctx_ptr%YieldStress) / (StiffnessB*myctx_ptr%YieldStress) , 0. )**myctx_ptr%ViscosityN
+         TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * deviatoricPart(Stress)
+         myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation =  (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) +&
+              & (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
               & (ABS(PlasticMultiplierIncrement)/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-      endif
-      f(1) = f(1) + (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) 
+         f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+      endif 
       h(1) = NORM(PlasticStrainFlow - TotalPlasticIncrement)
-      !print *,"h(1) = ",h(1)
-
-
    end subroutine FHG_VONMISESVISCOUS
 
 
@@ -925,8 +853,7 @@ contains
       real(kind=c_double)                       :: f(*)
       real(kind=c_double)                       :: h(*)
       real(kind=c_double)                       :: g(*)
-      real(kind = Kr)                           :: StiffnessA
-      real(Kind = Kr)                           :: R11,R22,R33,R12,R23,R31,R21,R32,R13
+      real(kind = Kr)                           :: StiffnessA,StiffnessB
       
       type(c_ptr),intent(in),value              :: myctx
       type(MEF90DefMechPlasticityCtx),pointer   :: myctx_ptr
@@ -952,21 +879,20 @@ contains
       !!! Select which softening young model
       if (myctx_ptr%CoefficientLinSoft==0) then
          StiffnessA = (1.0_Kr - myctx_ptr%Damage)**2 + myctx_ptr%residualStiffness
+         StiffnessB = (1.0_Kr - myctx_ptr%Damage)**myctx_ptr%DuctileCouplingPower + myctx_ptr%residualStiffness
       else
          StiffnessA = ( (1.0_Kr - myctx_ptr%Damage)**2 /( 1.0_Kr + ( myctx_ptr%CoefficientLinSoft - 1.0_Kr )*(1.0_Kr - (1.0_Kr - myctx_ptr%Damage)**2 ) ) ) + myctx_ptr%residualStiffness
+         StiffnessB = (1.0_Kr - myctx_ptr%Damage)**myctx_ptr%DuctileCouplingPower + myctx_ptr%residualStiffness
       endif
 
-      !!! Q1: I would like to have PlasticStrainFlow as 3D tensor for both 2D and 3D cases,
-      !!!     because I need to enforce constraints on XZ, YZ and ZZ components of the plastic strain.
-      !!!     In 2D, xMatS has only 3 unknowns -> 3 equality constraints at max
-      !!!     But the TotalPlasticIncrement is necessarily 3D in crystal plasticity
+      if ( myctx_ptr%isNoPlCoupling .eqv. .true.) then
+         StiffnessB = 1.0_Kr
+      else
+         StiffnessB = ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )
+      endif
+
       PlasticStrainFlow = xMatS-myctx_ptr%PlasticStrainOld
-      Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS))*StiffnessA
-      !!! Q6: What difference does it make to multiply by myctx_ptr%HookesLaw in f(1)? 
-      !!!     Shoulw I multiply by StiffnessA in f(1) or on the equivalent stress in the yield criterion?
-      ! f(1)   = ( (myctx_ptr%HookesLaw * PlasticStrainFlow) .DotP. PlasticStrainFlow ) * StiffnessA / 2.0
-      ! f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow ) * StiffnessA / 2.0
-      ! f(1) = xMatS .DotP. xMatS
+      Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS)) !*StiffnessA
 
 #if MEF90_DIM==2
       !!! If plane strain
@@ -985,14 +911,12 @@ contains
       PlasticStrainFlow3D%YY = xMatS%YY - myctx_ptr%PlasticStrainOld%YY
       PlasticStrainFlow3D%XY = xMatS%XY - myctx_ptr%PlasticStrainOld%XY
       PlasticStrainFlow3D%ZZ = -( PlasticStrainFlow3D%XX + PlasticStrainFlow3D%YY )
-      !!! Q1: How could I get the out of plane stress ZZ other than doing the following (only valid for isotropic elasticity)
-      !!! Stress3D%ZZ  = lambda*(Trace(Strain)) + 2*mu*(Strain%ZZ+ Trace(xMatS))
 
       Stress3D     = 0.0_Kr
       Stress3D%XX  = Stress%XX
       Stress3D%XY  = Stress%XY
       Stress3D%YY  = Stress%YY
-      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ) ! lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+ Trace(xMatS))
+      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ)
 #elif MEF90_DIM==3
       Stress3D             = Stress
       Strain3D             = myctx_ptr%InelasticStrain
@@ -1021,114 +945,40 @@ contains
       !!! Q4: I would like to have access to delta t in order to compute the viscous plastic
       !!!     slip increment. 
       !!!     The total strain increment could also be useful, to implement a
-      !!!     rate-independent model based on Forest and Rubin 2020.
-      !!!     Can we also have access to the iteration counter of the current minimization step.
-      !!!     This is needed for the rate-independent penalization, see Schmidt-Baldassari 2003.
+      !!!     rate-independent model based on Forest and Rubin 2020..
       dt = 0.1_Kr !myctx_ptr%number_of_iterations !L1SQP !numberOfIterations !iter !0.1
 
-      !!! Q5: Throw an error if the user attempts tu use isPlaneStress with this plastic criterion
-
-      f(1) = 0.5_Kr * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
+      f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
       Do s = 1,1
          m = m_s(:,s) 
          n = n_s(:,s) 
          !!! Q3: We compute MatrixMu at each call, but it could be computed once for all
-         MatrixMu = ((m .TensP. n) + (n .TensP. m)) / normS
-      
+         MatrixMu = ((m .TensP. n) + (n .TensP. m)) / normS 
          ResolvedShearStress(s) =  Stress3DCrystal .DotP. MatrixMu
-         !print *,"#########################################"
-         !print *,"xMats = ",xMats
-         !print *,"MatrixMu = ",MatrixMu
-         !print *,"Stress = ",Stress
-         !print *,"Stress3D = ",Stress3D
-         !print *,"Stress3DCrystal = ",Stress3DCrystal
-         !print *,"ResolvedShearStress(",s,") = ",ResolvedShearStress(s)
-         
          if (myctx_ptr%isViscousPlasticity) then 
-            !!! Q2: I would like to save PlasticSlipIncrement(s) for each s in the output Exodus file
-            !!!     Can we add additionnal internal variables to xMatS (hardening variables)
             PlasticSlipIncrement(s) = dt * myctx_ptr%ViscosityGamma0 * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
-                                    & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
+                                    & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
-            !if (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0 > 0.0_Kr) then
-            !   print *,"ResolvedShearStress(",s,") = ",ResolvedShearStress(s)
-            !   print *,"PlasticSlipIncrement(",s,") = ",PlasticSlipIncrement(s)
-            !endif            
-!#if MEF90_DIM==2
-            !!! h = PlasticStrainFlow3D - TotalPlasticIncrement 
-            !!! h(1) = PlasticStrainFlow%XX - TotalPlasticIncrement%XX
-            !!! h(2) = PlasticStrainFlow%XY - TotalPlasticIncrement%XY
-            !!! h(3) = PlasticStrainFlow%YY - TotalPlasticIncrement%YY
-            !!! Q1: possible workaround? Too many equality constraints in this form
-            !!! h(4) = 0.0_Kr - TotalPlasticIncrement%XZ
-            !!! h(5) = 0.0_Kr - TotalPlasticIncrement%YZ
-            !!! h(6) = -( PlasticStrainFlow%XX + PlasticStrainFlow%YY ) - TotalPlasticIncrement%ZZ
-!#elif MEF90_DIM==3
-            !h(1) = PlasticStrainFlow%XX - TotalPlasticIncrement%XX
-            !h(2) = PlasticStrainFlow%XY - TotalPlasticIncrement%XY
-            !h(3) = PlasticStrainFlow%YY - TotalPlasticIncrement%YY
-            !h(4) = PlasticStrainFlow%XZ - TotalPlasticIncrement%XZ
-            !h(5) = PlasticStrainFlow%YZ - TotalPlasticIncrement%YZ
-            !h(6) = PlasticStrainFlow%ZZ - TotalPlasticIncrement%ZZ
-!#endif       
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
+            myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)   
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +&
+                 & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
                  & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
          else
-            ! Implementation based on Schmidt-Baldassari, CMAME 2003
-            !if (i==0) then
-            !   tmp = 0.0_Kr
-            !else
-            !   tmp = PlasticSlipIncrement(s)
-            !end if
             PlasticSlipIncrement(s) = dt * myctx_ptr%eta * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
-                                    & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
-                                    ! SIGN(1.0_Kr, ResolvedShearStress(s)) * MAX( PlasticSlipIncrement(s) + dt * myctx_ptr%eta *&
-                                    ! & ((ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0) , 0. )
-            TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)         
-
-            !fixed_point_norm = fixed_point_norm + ABS( (PlasticStrainFlow3D .DotP. MatrixMu) - PlasticSlipIncrement(s) )
-            !h(2) = fixed_point_norm
-            !h(1) = PlasticStrainFlow%XX - TotalPlasticIncrement%XX
-            !h(2) = PlasticStrainFlow%XY - TotalPlasticIncrement%XY
-            !h(3) = PlasticStrainFlow%YY - TotalPlasticIncrement%YY
-!#if MEF90_DIM==3
-!            h(4) = PlasticStrainFlow%XZ - TotalPlasticIncrement%XZ
-!            h(5) = PlasticStrainFlow%YZ - TotalPlasticIncrement%YZ
-!            h(6) = PlasticStrainFlow%ZZ - TotalPlasticIncrement%ZZ
-!#endif               
-            !g(s) = ABS( tmp - PlasticSlipIncrement(s) ) - 1.0e-8 ! fixed point is reached
-            
+                                    & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
+            TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
             ! OR ill-posed inequality constraints
             !g(s) = ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0
             !TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +&
+                 & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
                  & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
-            !f(1) = f(1) + 0.5_Kr * (dt/myctx_ptr%eta) * MAX(0.0_Kr, ABS(PlasticSlipIncrement(s)/dt) + myctx_ptr%eta*(ABS(ResolvedShearStress(s))&
-            !     & -  myctx_ptr%YieldTau0))**2 - (ABS(PlasticSlipIncrement(s))/dt)**2
-         endif
-         f(1) = f(1) + (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) 
+            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+         endif 
       End Do
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
-
-                  
-      !myctx_ptr%rateIndependentFixedPointResidual = NORM(TotalPlasticIncrement - myctx_ptr%PlasticStrainFlow3D)
-                                                    ! ABS( (PlasticStrainFlow3D .DotP. MatrixMu) - PlasticSlipIncrement(s) )
-
-      !print *,"TotalPlasticIncrement = ",TotalPlasticIncrement
-      !print *,"myctx_ptr%PlasticStrainOld = ",myctx_ptr%PlasticStrainOld
-      !print *,"h(1) = ",h(1)
-      !print *,"h(2) = ",h(2)
-      !print *,"h(3) = ",h(3)
-      !print *,"\n"
-      !print *, "eta = ", eta
-      !print *, "fixed_point_nomr = ", fixed_point_norm
-      !print *,"eta = ", myctx_ptr%eta
-      !write(*,*) "myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = ", myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
-        
    end subroutine FHG_CRYSTALSINGLESLIP
 
 
@@ -1151,8 +1001,7 @@ contains
       real(kind=c_double)                       :: f(*)
       real(kind=c_double)                       :: h(*)
       real(kind=c_double)                       :: g(*)
-      real(kind = Kr)                           :: StiffnessA
-      real(Kind = Kr)                           :: R11,R22,R33,R12,R23,R31,R21,R32,R13
+      real(kind = Kr)                           :: StiffnessA,StiffnessB
       
       type(c_ptr),intent(in),value              :: myctx
       type(MEF90DefMechPlasticityCtx),pointer   :: myctx_ptr
@@ -1166,8 +1015,8 @@ contains
       type(Vect3D)                              :: m
       real(Kind = Kr)                           :: normS, dt
                                                 !!! slip systems nomenclature:
-                                                !!!              Bd,B4         Ba,B2         Bc,B5         Db,D4         Dc,D1         Da,D6
-                                                !!!              Ab,A2         Ad,A6         Ac,A3         Cb,C5         Ca,C3         Cd,C1
+                                                !!!                   Bd,B4         Ba,B2         Bc,B5         Db,D4         Dc,D1         Da,D6
+                                                !!!                   Ab,A2         Ad,A6         Ac,A3         Cb,C5         Ca,C3         Cd,C1
       real(Kind = Kr),dimension(3,12)           :: n_s = reshape((/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1.,   0., 1., 1.,   1., 1., 0., &
                                                                   & 0.,-1., 1.,   1., 1., 0.,   1., 0., 1.,  -1., 1., 0.,   1., 0., 1.,   0., 1., 1.  /), (/3,12/)) !!! slip planes normals
       real(Kind = Kr),dimension(3,12)           :: m_s = reshape((/ 1., 1., 1.,   1., 1., 1.,   1., 1., 1.,   1.,-1., 1.,   1.,-1., 1.,   1.,-1., 1., &
@@ -1182,14 +1031,20 @@ contains
       !!! Select which softening young model
       if (myctx_ptr%CoefficientLinSoft==0) then
          StiffnessA = (1.0_Kr - myctx_ptr%Damage)**2 + myctx_ptr%residualStiffness
+         StiffnessB = (1.0_Kr - myctx_ptr%Damage)**myctx_ptr%DuctileCouplingPower + myctx_ptr%residualStiffness
       else
          StiffnessA = ( (1.0_Kr - myctx_ptr%Damage)**2 /( 1.0_Kr + ( myctx_ptr%CoefficientLinSoft - 1.0_Kr )*(1.0_Kr - (1.0_Kr - myctx_ptr%Damage)**2 ) ) ) + myctx_ptr%residualStiffness
+         StiffnessB = (1.0_Kr - myctx_ptr%Damage)**myctx_ptr%DuctileCouplingPower + myctx_ptr%residualStiffness
+      endif
+
+      if ( myctx_ptr%isNoPlCoupling .eqv. .true.) then
+         StiffnessB = 1.0_Kr
+      else
+         StiffnessB = ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )
       endif
 
       PlasticStrainFlow = xMatS-myctx_ptr%PlasticStrainOld
-      Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS))*StiffnessA
-      ! f(1)   = ( (myctx_ptr%HookesLaw * PlasticStrainFlow) .DotP. PlasticStrainFlow ) * StiffnessA / 2.0
-      ! f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow ) * StiffnessA / 2.0
+      Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS)) !*StiffnessA
 
 #if MEF90_DIM==2
       !!! If plane strain
@@ -1213,6 +1068,7 @@ contains
       Stress3D%XX  = Stress%XX
       Stress3D%XY  = Stress%XY
       Stress3D%YY  = Stress%YY
+      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ)
 #elif MEF90_DIM==3
       Stress3D             = Stress
       Strain3D             = myctx_ptr%InelasticStrain
@@ -1236,49 +1092,44 @@ contains
       TotalPlasticIncrement        = 0.0_Kr
 
       normS = (2.0_Kr*SQRT(6.0_Kr))
-      dt = 0.1
+      dt = 0.1_Kr
       active = 0
 
-      f(1) = 0.5_Kr * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
+      f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
       Do s = 1,12
          m = m_s(:,s) 
          n = n_s(:,s) 
-         MatrixMu = ((m .TensP. n) + (n .TensP. m)) / normS
-      
-         ResolvedShearStress(s) =  Stress3DCrystal .DotP. MatrixMu
-         !print *,"ResolvedShearStress(",s,") = ",ResolvedShearStress(s)
-         
+         MatrixMu = ((m .TensP. n) + (n .TensP. m)) / normS   
+         ResolvedShearStress(s) =  Stress3DCrystal .DotP. MatrixMu     
          if (myctx_ptr%isViscousPlasticity) then    
             PlasticSlipIncrement(s) = dt * myctx_ptr%ViscosityGamma0 * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
-                                    & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
+                                    & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            if ((ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0)>0) then
-               active = active + 1
-            end if
-            !print *,"PlasticSlipIncrement(",s,") = ",PlasticSlipIncrement(s)
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
-                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
             myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +& 
+                 & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
+                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
+            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation          
          else
             PlasticSlipIncrement(s) = dt * myctx_ptr%eta * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
-                                    & MAX( (ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
+                                    & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) - StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
+            !PlasticSlipIncrement(s) = SIGN(1.0_Kr, ResolvedShearStress(s)) * MAX( ABS(myctx_ptr%plasticSlipsVariation(s)) + dt*myctx_ptr%eta * MAX( (ABS(StiffnessA*ResolvedShearStress(s)) - StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. ) , 0.0_Kr)                        
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            ! That is too many equality constraints
-            ! h(s) = PlasticSlipIncrement(s) - (PlasticStrainFlow .DotP. MatrixMu)
-            ! PlasticSlipIncrement(s) = (PlasticStrainFlow .DotP. MatrixMu)
-            ! g(s) = ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0
-            ! TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
+            myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +& 
+                 & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
                  & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
          endif
-         f(1) = f(1) + (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s)))
+         if ((ABS(StiffnessA*ResolvedShearStress(s)) - StiffnessB*myctx_ptr%YieldTau0)>0) then
+            active = active + 1
+         end if
       End Do
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
-      !write(*,*) "active = ", active
-      !write(*,*) "myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = ", myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+!#if MEF90_DIM==2
+!      h(2) = Trace(PlasticStrainFlow3D)
+!#endif
    end subroutine FHG_CRYSTALBCC
 
 #undef __FUNCT__
@@ -1332,7 +1183,6 @@ contains
       Type(MEF90_MATS)                                   :: PlasticStrainMatS
       PetscReal                                          :: Sigma_33_PlaneStrain
       PetscInt                                           :: rateIndependentIter = 0
-      PetscReal                                          :: viscousCumulatedDissipatedPlasticEnergyVariation
       PetscInt                                           :: slip
 
       Call SectionRealDuplicate(MEF90DefMechCtx%cellDMMatSSec,plasticStrainSec,ierr);CHKERRQ(ierr)
@@ -1501,7 +1351,7 @@ contains
                      if (matPropSet%HookesLaw%isPlaneStress) then
                         write(*,*) "Plane stress CrystalSingleBCC is not implemented"
                      end if
-                     snlp_m    = 1 !1 !13
+                     snlp_m    = 1 !2 !1 !13
 #elif MEF90_DIM==3
                      snlp_m    = 1
 #endif
@@ -1558,16 +1408,11 @@ contains
                PlasticityCtx%eta_m = matpropSet%eta_m
                PlasticityCtx%eta_0 = matpropSet%eta_0
 
-
-
-
-
 #if MEF90_DIM == 2
    PlasticityCtx%isPlaneStress = matPropSet%HookesLaw%isPlaneStress
 #else
    PlasticityCtx%isPlaneStress = .FALSE.
 #endif
-
 
                Call SNLPNew(s,snlp_n,snlp_m,snlp_p,snlp_fhg,snlp_Dfhg,snlp_ctx)
                QuadratureOrder = 2 * (elemDisplacementType%order - 1)
@@ -1616,7 +1461,6 @@ contains
                   !       End if
                   Case default
                      Select Case (cellSetOptions%plasticityType)
-                     !Case (PlasticityCtx%isViscousPlasticity==0 .AND. (MEF90DefMech_plasticityTypeCrystalSingleSlip .OR. MEF90DefMech_plasticityTypeCrystalBCC))
                      Case (MEF90DefMech_plasticityTypeCrystalSingleSlip,MEF90DefMech_plasticityTypeCrystalBCC,MEF90DefMech_plasticityTypeVONMISESVISCOUS)
                         if (.NOT. PlasticityCtx%isViscousPlasticity) then
                             rateIndependentIter = 0
@@ -1625,21 +1469,20 @@ contains
                             PlasticityCtx%plasticStrainFlow3D_0 = 0.0_Kr
                             PlasticityCtx%plasticStrainFlow3D_1 = 0.0_Kr
                             !print *,"cell: ", cell
-                            do while (PlasticityCtx%rateIndependentFixedPointResidual > 1.e-6)
+                            do while ((PlasticityCtx%rateIndependentFixedPointResidual > 1.e-6) .AND. (rateIndependentIter < 5))
                                PlasticityCtx%rateIndependentFixedPointResidual = 0.
                                PlasticityCtx%plasticStrainFlow3D_0 = plasticStrainLoc - plasticStrainOldLoc
                                exit_code = SNLPL1SQP(s,plasticStrainLoc)
                                rateIndependentIter = rateIndependentIter + 1
                                PlasticityCtx%eta = PlasticityCtx%eta * PlasticityCtx%eta_m
-                               !print *,"rateIndependentIter = ", rateIndependentIter
-                               !print *,"PlasticityCtx%plasticStrainFlow3D_0 = ", PlasticityCtx%plasticStrainFlow3D_0
                                PlasticityCtx%plasticStrainFlow3D_1 = plasticStrainLoc - plasticStrainOldLoc
-                               !print *,"PlasticityCtx%plasticStrainFlow3D_1 = ", PlasticityCtx%plasticStrainFlow3D_1
                                PlasticityCtx%rateIndependentFixedPointResidual = NORM(PlasticityCtx%plasticStrainFlow3D_1 - PlasticityCtx%plasticStrainFlow3D_0)
+                               !print *,"cell: ", cell
                                !print *,"PlasticityCtx%rateIndependentFixedPointResidual = ", PlasticityCtx%rateIndependentFixedPointResidual
                             end do
                         else
                             exit_code = SNLPL1SQP(s,plasticStrainLoc)
+                            !exit_code = SNLPLinfSQP(s,plasticStrainLoc)
                         end if                
                      Case default
                         if (cellSetOptions%plasticityType /= MEF90DefMech_plasticityTypeNONE) then
@@ -1662,10 +1505,12 @@ contains
                         Print*,__FUNCT__,': Unimplemented damage Type, only AT1Elastic and AT2Elastic implement',cellSetOptions%damageType
                         STOP
                   End Select
-                  cumulatedDissipatedPlasticEnergyVariationLoc(1) = Stiffness * ( PlasticityCtx%HookesLaw * ( PlasticityCtx%InelasticStrain - PlasticStrainMatS ) ) .dotP. ( PlasticStrainMatS - PlasticityCtx%plasticStrainOld )
                   
+                  !cumulatedDissipatedPlasticEnergyVariationLoc(1) = Stiffness * ( PlasticityCtx%HookesLaw * ( PlasticityCtx%InelasticStrain - PlasticStrainMatS ) ) .dotP. ( PlasticStrainMatS - PlasticityCtx%plasticStrainOld )
                   if (.NOT. PlasticityCtx%isViscousPlasticity) then
-                     cumulatedDissipatedPlasticEnergyVariationLoc(1) = cumulatedDissipatedPlasticEnergyVariationLoc(1) + stiffness * PlasticityCtx%viscousCumulatedDissipatedPlasticEnergyVariation
+                     cumulatedDissipatedPlasticEnergyVariationLoc(1) = Stiffness * ( PlasticityCtx%HookesLaw * ( PlasticityCtx%InelasticStrain - PlasticStrainMatS ) ) .dotP. ( PlasticStrainMatS - PlasticityCtx%plasticStrainOld )
+                  else
+                     cumulatedDissipatedPlasticEnergyVariationLoc(1) = Stiffness * PlasticityCtx%viscousCumulatedDissipatedPlasticEnergyVariation
                   endif
 
 #if MEF90_DIM == 2
@@ -1675,22 +1520,7 @@ contains
                   endif
 #endif
 
-                  !plasticSlipsVariationLoc = 10.0_Kr
-                  !print *,PlasticityCtx%plasticSlipsVariation
                   plasticSlipsVariationLoc = PlasticityCtx%plasticSlipsVariation
-                  !plasticSlipsVariationLoc = 0.0_Kr
-
-                  !Select Case (cellSetOptions%plasticityType)
-                  !   Case (MEF90DefMech_plasticityTypeCrystalSingleSlip,MEF90DefMech_plasticityTypeCrystalBCC)
-                  !      Do slip=1,12
-                  !         !PlasticityCtx%plasticSlipsVariation = PlasticityCtx%plasticSlipIncrement
-                  !         !plasticSlipsVariationLoc = PlasticityCtx%plasticSlipIncrement
-                  !         !print *,PlasticityCtx%plasticSlipsVariation(slip)
-                  !         !plasticSlipsVariationLoc(slip) = PlasticityCtx%plasticSlipsVariation(slip)
-                  !         !plasticSlipsVariationLoc = (/-1., 0., 1.,   0.,-1., 1.,  -1., 1., 0.,  -1., 0., 1./) !PlasticityCtx%plasticSlipIncrement !PlasticityCtx%plasticSlipsVariation
-                  !      End Do
-                  !   Case Default
-                  !End Select
 
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyVariationSec,cellID(cell),cumulatedDissipatedPlasticEnergyVariationLoc,ierr);CHKERRQ(ierr)
                   Call SectionRealRestore(cumulatedDissipatedPlasticEnergyOldSec,cellID(cell),cumulatedDissipatedPlasticEnergyOldLoc,ierr);CHKERRQ(ierr)
