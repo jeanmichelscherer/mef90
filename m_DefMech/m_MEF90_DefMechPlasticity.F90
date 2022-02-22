@@ -917,7 +917,7 @@ contains
       Stress3D%XX  = Stress%XX
       Stress3D%XY  = Stress%XY
       Stress3D%YY  = Stress%YY
-      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ)
+      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
 #elif MEF90_DIM==3
       Stress3D             = Stress
       Strain3D             = myctx_ptr%InelasticStrain
@@ -1072,7 +1072,7 @@ contains
       Stress3D%XX  = Stress%XX
       Stress3D%XY  = Stress%XY
       Stress3D%YY  = Stress%YY
-      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ)
+      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
 #elif MEF90_DIM==3
       Stress3D             = Stress
       Strain3D             = myctx_ptr%InelasticStrain
@@ -1358,7 +1358,7 @@ contains
                      if (matPropSet%HookesLaw%isPlaneStress) then
                         write(*,*) "Plane stress CrystalSingleBCC is not implemented"
                      end if
-                     snlp_m    = 1 !2 !1 !13
+                     snlp_m    = 1 !1 !13
 #elif MEF90_DIM==3
                      snlp_m    = 1
 #endif
