@@ -24,6 +24,25 @@ Module m_MEF90_Materials_Types
       PetscBool          :: padding = PETSC_FALSE
 #endif
    End Type MEF90HookesLaw3D
+   
+   Type MEF90RotationMatrix2D
+      Type(Mat2D)        :: fullTensor
+      PetscReal          :: phi1
+      !PetscEnum          :: type
+   End Type MEF90RotationMatrix2D   
+   
+   Type MEF90RotationMatrix3D
+      Type(MAT3D)        :: fullTensor
+      PetscReal          :: phi1,Phi,phi2
+      !PetscEnum          :: type
+!#if (PETSC_SIZEOF_INT == 4)
+      ! With 4-byte integers, this declared type is 4-bytes shy of being
+      ! 8-byte aligned, which can be problematic for arrays of this type.
+      ! The MEF90HookesLaw2D has an extra PetscBool that keeps it 8-byte
+      ! aligned, so we'll mimic that:
+!      PetscBool          :: padding = PETSC_FALSE
+!#endif
+   End Type MEF90RotationMatrix3D
 
    Type MEF90MatProp2D_Type
       PetscReal                     :: Density                                          ! rho
@@ -66,7 +85,8 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: ViscosityGamma0                                  ! viscosity reference slip rate
       PetscReal                     :: ViscosityN                                       ! viscosity exponent
       PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
-      PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient 
+      PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient
+      Type(MEF90RotationMatrix3D)   :: RotationMatrix                                   ! rotation matrix from the global frame to the material frame: X_local = R . X_global
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp2D_Type
 
@@ -111,7 +131,8 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: ViscosityGamma0                                  ! viscosity reference slip rate
       PetscReal                     :: ViscosityN                                       ! viscosity exponent
       PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
-      PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient 
+      PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient
+      Type(MEF90RotationMatrix3D)   :: RotationMatrix                                   ! rotation matrix from the global frame to the material frame: X_local = R . X_global
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp3D_Type
 
@@ -170,6 +191,7 @@ Module m_MEF90_Materials_Types
       1.0_Kr,                                                                          & ! ViscosityN
       1.0_Kr,                                                                          & ! eta_0
       10.0_Kr,                                                                         & ! eta_m
+      MEF90RotationMatrix3D(MEF90Mat3DIdentity,0.,0.,0.),                              & ! RotationMatrix
       "MEF90Mathium2D")
 
    Type(MEF90MatProp3D_Type),Parameter     :: MEF90Mathium3D = MEF90MatProp3D_Type(    &
@@ -226,6 +248,7 @@ Module m_MEF90_Materials_Types
       1.0_Kr,                                                                          & ! ViscosityN
       1.0_Kr,                                                                          & ! eta_0
       10.0_Kr,                                                                         & ! eta_m
+      MEF90RotationMatrix3D(MEF90Mat3DIdentity,0.,0.,0.),                              & ! RotationMatrix
       "MEF90Mathium3D")
 End Module m_MEF90_Materials_Types
 
@@ -269,6 +292,20 @@ Contains
                data%HookesLaw%BulkModulus = data%HookesLaw%lambda + data%HookesLaw%mu
             End If
       End Select
+      data%RotationMatrix%fullTensor%XX =  cos(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)-sin(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%XY =  sin(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)+cos(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%YX = -cos(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)-sin(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%YY = -sin(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)+cos(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%XZ =  sin(data%RotationMatrix%phi2)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%YZ =  cos(data%RotationMatrix%phi2)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%ZX =  sin(data%RotationMatrix%phi1)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%ZY = -cos(data%RotationMatrix%phi1)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%ZZ =  cos(data%RotationMatrix%Phi)
+      !data%RotationMatrix%fullTensor%XX =  cos(data%RotationMatrix%phi1)
+      !data%RotationMatrix%fullTensor%YY =  cos(data%RotationMatrix%phi1)
+      !data%RotationMatrix%fullTensor%XY = -sin(data%RotationMatrix%phi1)
+      !data%RotationMatrix%fullTensor%YX =  sin(data%RotationMatrix%phi1)
+      !Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1)
    End Subroutine PetscBagGetDataMEF90MatProp2D
 End Module m_MEF90_Materials_Interface2D
 
@@ -306,6 +343,16 @@ Contains
             data%HookesLaw%mu           = data%HookesLaw%YoungsModulus / (1.0_Kr + data%HookesLaw%PoissonRatio) * .5_Kr
             data%HookesLaw%BulkModulus  = data%HookesLaw%lambda + 2.0_Kr * data%HookesLaw%mu / 3.0_Kr
       End Select
+      data%RotationMatrix%fullTensor%XX =  cos(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)-sin(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%XY =  sin(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)+cos(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%YX = -cos(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)-sin(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%YY = -sin(data%RotationMatrix%phi1)*sin(data%RotationMatrix%phi2)+cos(data%RotationMatrix%phi1)*cos(data%RotationMatrix%phi2)*cos(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%XZ =  sin(data%RotationMatrix%phi2)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%YZ =  cos(data%RotationMatrix%phi2)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%ZX =  sin(data%RotationMatrix%phi1)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%ZY = -cos(data%RotationMatrix%phi1)*sin(data%RotationMatrix%Phi)
+      data%RotationMatrix%fullTensor%ZZ =  cos(data%RotationMatrix%Phi)
+      !Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1,data%Phi,data%phi2)
    End Subroutine PetscBagGetDataMEF90MatProp3D
 End Module m_MEF90_Materials_Interface3D
 
@@ -463,7 +510,19 @@ Contains
       Call PetscBagRegisterReal(bag,matprop%ViscosityN,default%ViscosityN,'ViscosityN','[unit-less] Viscosity exponent',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_0,default%eta_0,'eta_0','[s^(-1)] Reference penalty (similar to a plastic deformation rate)',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_m,default%eta_m,'eta_m','[unit-less] Geometric sequence quotient of rate independent model',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi1,default%RotationMatrix%phi1,'RotationMatrix_phi1','[radians] (phi1) First Bunge angle',ierr)
+      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%Phi,default%RotationMatrix%Phi,'RotationMatrix_Phi','[radians] (Phi) Second Bunge angle',ierr)
+      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi2,default%RotationMatrix%phi2,'RotationMatrix_phi2','[radians] (phi2) Third Bunge angle',ierr)
       !Call PetscBagSetFromOptions(bag,ierr)
+      matprop%RotationMatrix%fullTensor%XX =  cos(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)-sin(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%XY =  sin(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)+cos(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%YX = -cos(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)-sin(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%YY = -sin(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)+cos(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%XZ =  sin(matprop%RotationMatrix%phi2)*sin(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%YZ =  cos(matprop%RotationMatrix%phi2)*sin(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%ZX =  sin(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%ZY = -cos(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%Phi)
+      matprop%RotationMatrix%fullTensor%ZZ =  cos(matprop%RotationMatrix%Phi)
    End Subroutine PetscBagRegisterMEF90MatProp2D
 
 #undef __FUNCT__
@@ -544,7 +603,12 @@ Contains
       Call PetscBagRegisterReal(bag,matprop%ViscosityN,default%ViscosityN,'ViscosityN','[unit-less] Viscosity exponent',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_0,default%eta_0,'eta_0','[s^(-1)] Reference penalty (similar to a plastic deformation rate)',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_m,default%eta_m,'eta_m','[unit-less] Geometric sequence quotient of rate independent model',ierr);CHKERRQ(ierr)
+      
+       Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi1,default%RotationMatrix%phi1,'RotationMatrix_phi1','[radians] (phi1) First Bunge angle',ierr)
+       Call PetscBagRegisterReal(bag,matprop%RotationMatrix%Phi,default%RotationMatrix%Phi,'RotationMatrix_Phi','[radians] (Phi) Second Bunge angle',ierr)
+       Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi2,default%RotationMatrix%phi2,'RotationMatrix_phi2','[radians] (phi2) Third Bunge angle',ierr)
       !Call PetscBagSetFromOptions(bag,ierr)
+
    End Subroutine PetscBagRegisterMEF90MatProp3D
 
 
@@ -1113,4 +1177,49 @@ Contains
       End Select
    End Function MEF90HookesLaw3DXMat3D
 
+!!! Subroutine generating 2D rotation matrix
+#undef __FUNCT__
+#define __FUNCT__ "MEF90RotationMatrixphi12D"
+!!!
+!!!
+!!!  MEF90RotationMatrixphi12D:
+!!!
+!!!  (c) 2022 Jean-Michel Scherer scherer@caltech.edu
+!!!
+   Subroutine MEF90RotationMatrixphi12D(R,phi1)
+      Type(Mat2D),Intent(OUT)                      :: R
+      PetscReal,Intent(IN)                         :: phi1
+      R = 0.0_Kr
+
+      R%XX =  cos(phi1)
+      R%YY =  cos(phi1)
+      R%XY = -sin(phi1)
+      R%YX =  sin(phi1)
+   End Subroutine MEF90RotationMatrixphi12D
+   
+!!! Subroutine generating 3D rotation matrix
+#undef __FUNCT__
+#define __FUNCT__ "MEF90RotationMatrixphi1Phiphi23D"
+!!!
+!!!
+!!!  MEF90RotationMatrixphi1Phiphi23D:
+!!!
+!!!  (c) 2022 Jean-Michel Scherer scherer@caltech.edu
+!!!
+   Subroutine MEF90RotationMatrixphi1Phiphi23D(R,phi1,Phi,phi2)
+      Type(Mat3D),Intent(OUT)                      :: R
+      PetscReal,Intent(IN)                         :: phi1,Phi,phi2
+      R = 0.0_Kr
+
+      R%XX =  cos(phi1)*cos(phi2)-sin(phi1)*sin(phi2)*cos(Phi)
+      R%XY =  sin(phi1)*cos(phi2)+cos(phi1)*sin(phi2)*cos(Phi)
+      R%YX = -cos(phi1)*sin(phi2)-sin(phi1)*cos(phi2)*cos(Phi)
+      R%YY = -sin(phi1)*sin(phi2)+cos(phi1)*cos(phi2)*cos(Phi)
+      R%XZ =  sin(phi2)*sin(Phi)
+      R%YZ =  cos(phi2)*sin(Phi)
+      R%ZX =  sin(phi1)*sin(Phi)
+      R%ZY = -cos(phi1)*sin(Phi)
+      R%ZZ =  cos(Phi)
+   End Subroutine MEF90RotationMatrixphi1Phiphi23D
+   
 End Module m_MEF90_Materials

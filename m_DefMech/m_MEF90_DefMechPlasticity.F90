@@ -50,6 +50,7 @@ Module MEF90_APPEND(m_MEF90_DefMechPlasticity,MEF90_DIM)D
       Type(MATS3D)                :: plasticStrainFlow3D_0, plasticStrainFlow3D_1
       real(Kind = Kr)             :: viscouscumulatedDissipatedPlasticEnergyVariation
       real(Kind = Kr),dimension(12) :: plasticSlipsVariation
+      Type(MEF90RotationMatrix3D) :: RotationMatrix3D
    end type MEF90DefMechPlasticityCtx
 
 contains
@@ -924,18 +925,20 @@ contains
 #endif
 
       !!! Q3: We compute MatrixR at each call, but it could be computed once for all
-      MatrixR    = 0.0_Kr
-      MatrixR%XX =  cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%XY =  sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%YX = -cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%YY = -sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%XZ =  sin(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
-      MatrixR%YZ =  cos(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
-      MatrixR%ZX =  sin(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
-      MatrixR%ZY = -cos(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
-      MatrixR%ZZ =  cos(myctx_ptr%Phi)
-        
-      Stress3DCrystal = MatRaRt(Stress3D,MatrixR) 
+      !MatrixR    = 0.0_Kr
+      !MatrixR%XX =  cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%XY =  sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%YX = -cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%YY = -sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%XZ =  sin(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
+      !MatrixR%YZ =  cos(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
+      !MatrixR%ZX =  sin(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
+      !MatrixR%ZY = -cos(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
+      !MatrixR%ZZ =  cos(myctx_ptr%Phi)
+      !MatrixR    = myctx_ptr%RotationMatrix3D%fullTensor
+      !Stress3DCrystal = MatRaRt(Stress3D,MatrixR)
+      
+      Stress3DCrystal = MatRaRt(Stress3D,myctx_ptr%RotationMatrix3D%fullTensor)
 
       TotalPlasticIncrementCrystal = 0.0_Kr
       TotalPlasticIncrement        = 0.0_Kr
@@ -977,7 +980,8 @@ contains
             f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
          endif 
       End Do
-      TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
+      !TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
+      TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
    end subroutine FHG_CRYSTALSINGLESLIP
 
@@ -1075,18 +1079,20 @@ contains
       PlasticStrainFlow3D  = xMats - myctx_ptr%PlasticStrainOld
 #endif
 
-      MatrixR    = 0.0_Kr
-      MatrixR%XX =  cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%XY =  sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%YX = -cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%YY = -sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
-      MatrixR%XZ =  sin(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
-      MatrixR%YZ =  cos(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
-      MatrixR%ZX =  sin(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
-      MatrixR%ZY = -cos(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
-      MatrixR%ZZ =  cos(myctx_ptr%Phi)
-        
-      Stress3DCrystal = MatRaRt(Stress3D,MatrixR) 
+      !MatrixR    = 0.0_Kr
+      !MatrixR%XX =  cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%XY =  sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%YX = -cos(myctx_ptr%phi1)*sin(myctx_ptr%phi2)-sin(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%YY = -sin(myctx_ptr%phi1)*sin(myctx_ptr%phi2)+cos(myctx_ptr%phi1)*cos(myctx_ptr%phi2)*cos(myctx_ptr%Phi)
+      !MatrixR%XZ =  sin(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
+      !MatrixR%YZ =  cos(myctx_ptr%phi2)*sin(myctx_ptr%Phi)
+      !MatrixR%ZX =  sin(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
+      !MatrixR%ZY = -cos(myctx_ptr%phi1)*sin(myctx_ptr%Phi)
+      !MatrixR%ZZ =  cos(myctx_ptr%Phi)
+      !MatrixR    = myctx_ptr%RotationMatrix3D%fullTensor
+      !Stress3DCrystal = MatRaRt(Stress3D,MatrixR)
+      
+      Stress3DCrystal = MatRaRt(Stress3D,myctx_ptr%RotationMatrix3D%fullTensor)
 
       TotalPlasticIncrementCrystal = 0.0_Kr
       TotalPlasticIncrement        = 0.0_Kr
@@ -1125,7 +1131,8 @@ contains
             active = active + 1
          end if
       End Do
-      TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
+      !TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
+      TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
 !#if MEF90_DIM==2
 !      h(2) = Trace(PlasticStrainFlow3D)
@@ -1407,6 +1414,7 @@ contains
                !PlasticityCtx%eta = matpropSet%eta
                PlasticityCtx%eta_m = matpropSet%eta_m
                PlasticityCtx%eta_0 = matpropSet%eta_0
+               PlasticityCtx%RotationMatrix3D = matpropSet%RotationMatrix
 
 #if MEF90_DIM == 2
    PlasticityCtx%isPlaneStress = matPropSet%HookesLaw%isPlaneStress
