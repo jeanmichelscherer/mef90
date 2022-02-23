@@ -21,10 +21,11 @@ def parse(args=None):
     parser.add_argument("--cs",type=int,nargs='*',help="list of cell sets where surfing boundary displacements are applied",default=[])
     parser.add_argument("--vs",type=int,nargs='*',help="list of vertex sets where surfing boundary displacements are applied",default=[])
     parser.add_argument("--plasticity",default=False,action="store_true",help="Add extended variables for plasticity related fields")
+    parser.add_argument("--plasticslips",default=False,action="store_true",help="Add plastic slips variables")
     parser.add_argument("--force",action="store_true",default=False,help="Overwrite existing files without prompting")
     return parser.parse_args()
     
-def exoformat(e,plasticity=False):
+def exoformat(e,plasticity=False,plasticslips=False):
     if plasticity:
         global_variable_name = ["Elastic Energy","Work","Surface Energy","Total Energy","Dissipation Plastic"]
         if e.num_dimensions() == 2: 
@@ -39,6 +40,8 @@ def exoformat(e,plasticity=False):
                                        "Force_X","Force_Y","Force_Z",
                                        "Stress_XX","Stress_YY","Stress_ZZ","Stress_YZ","Stress_XZ","Stress_XY",
                                        "Cumulated_Plastic_Energy","plasticStrain_XX","plasticStrain_YY","plasticStrain_ZZ","plasticStrain_XY","plasticStrain_YZ","plasticStrain_XZ","plasticStrain_XY"]
+        if plasticslips:
+            element_variable_name += ["plasticslip_0","plasticslip_1","plasticslip_2","plasticslip_3","plasticslip_4","plasticslip_5","plasticslip_6","plasticslip_7","plasticslip_8","plasticslip_9","plasticslip_10","plasticslip_11"]
     else:
         global_variable_name = ["Elastic Energy","Work","Surface Energy","Total Energy"]
         if e.num_dimensions() == 2: 
@@ -125,7 +128,7 @@ def main():
     QA = [os.path.basename(sys.argv[0]),os.path.basename(__file__),datetime.date.today().strftime('%Y%m%d'),datetime.datetime.now().strftime("%H:%M:%S")]
     exoout.put_qa_records([[ q[0:31] for q in QA],])
 
-    exoformat(exoout,options.plasticity)
+    exoformat(exoout,options.plasticity,options.plasticslips)
     
     dim = exoout.num_dimensions()
     step = 0
