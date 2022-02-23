@@ -982,7 +982,14 @@ contains
       End Do
       !TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
+      !h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
+#if MEF90_DIM==2
+      h(1) = PlasticStrainFlow3D%XX - TotalPlasticIncrement%XX
+      h(2) = PlasticStrainFlow3D%XY - TotalPlasticIncrement%XY
+      h(3) = PlasticStrainFlow3D%YY - TotalPlasticIncrement%YY
+#elif MEF90_DIM==3
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
+#endif
    end subroutine FHG_CRYSTALSINGLESLIP
 
 
@@ -1056,12 +1063,12 @@ contains
       nu     = myctx_ptr%HookesLaw%PoissonRatio
       mu     = E / (1.0_Kr + nu) * .5_Kr
       lambda = E * nu / (1.0_Kr + nu) / (1 - 2.0_Kr * nu)
-
+         
       Strain3D      = 0.0_Kr
       Strain3D%XX   = myctx_ptr%InelasticStrain%XX
       Strain3D%YY   = myctx_ptr%InelasticStrain%YY
       Strain3D%XY   = myctx_ptr%InelasticStrain%XY
-
+     
       PlasticStrainFlow3D    = 0.0_Kr
       PlasticStrainFlow3D%XX = xMatS%XX - myctx_ptr%PlasticStrainOld%XX
       PlasticStrainFlow3D%YY = xMatS%YY - myctx_ptr%PlasticStrainOld%YY
@@ -1131,9 +1138,18 @@ contains
             active = active + 1
          end if
       End Do
+      !print *,'active = ', active
       !TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
+      !h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
+#if MEF90_DIM==2
+      h(1) = PlasticStrainFlow3D%XX - TotalPlasticIncrement%XX
+      h(2) = PlasticStrainFlow3D%XY - TotalPlasticIncrement%XY
+      h(3) = PlasticStrainFlow3D%YY - TotalPlasticIncrement%YY
+      !print *,PlasticStrainFlow3D%ZZ-TotalPlasticIncrement%ZZ
+#elif MEF90_DIM==3
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
+#endif
 !#if MEF90_DIM==2
 !      h(2) = Trace(PlasticStrainFlow3D)
 !#endif
@@ -1337,15 +1353,13 @@ contains
                      if (matPropSet%HookesLaw%isPlaneStress) then
                         write(*,*) "Plane stress CrystalSingleSlip is not implemented"
                      end if
-                     !snlp_m    = 1 !1 !13
+                     snlp_m    = 3
 #elif MEF90_DIM==3
-                     !snlp_m    = 1
+                     snlp_m    = 1
 #endif
                      if (matpropSet%isViscousPlasticity) then
-                        snlp_m = 1
                         snlp_p = 0
-                     else   
-                        snlp_m = 1 !2
+                     else
                         snlp_p = 0
                      end if
                      snlp_ctx  = c_loc(PlasticityCtx)
@@ -1358,14 +1372,14 @@ contains
                      if (matPropSet%HookesLaw%isPlaneStress) then
                         write(*,*) "Plane stress CrystalSingleBCC is not implemented"
                      end if
-                     snlp_m    = 1 !1 !13
+                     snlp_m    = 3
 #elif MEF90_DIM==3
                      snlp_m    = 1
 #endif
                      if (matpropSet%isViscousPlasticity) then
-                        snlp_p    = 0
+                        snlp_p = 0
                      else   
-                        snlp_p    = 0
+                        snlp_p = 0
                      end if
                      snlp_ctx  = c_loc(PlasticityCtx)
 
