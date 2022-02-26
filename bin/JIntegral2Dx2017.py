@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 from visit import *
 def parse(args=None):
     import argparse
@@ -27,7 +28,9 @@ def plot(opts):
     import os.path
     import shutil
     import math
-    
+
+    AddArgument("-nowin")
+    Launch()    
     ##  
     ## Open the database
     ##
@@ -125,7 +128,6 @@ def plot(opts):
 
     ### C e1 . n top edge
     SetActiveWindow(1)
-    ### -C e1 . n left edge
     ChangeActivePlotsVar("C21")
     Lineout(start_point = (BB[0]+BB[2],BB[1]+BB[3],0), 
             end_point   = (BB[0]      ,BB[1]+BB[3],0))
@@ -153,7 +155,9 @@ def plot(opts):
     DeleteActivePlots()
     print "Done with bottom edge"
 
-    for s in range(firststep,laststep):
+    print(len(Cleft),len(Cright),len(Ctop),len(Cbot))
+    for k in range(firststep,laststep):
+        s = k-firststep
         Jint.append(Cleft[s]+Cright[s]+Ctop[s]+Cbot[s])
         print "****** step {0:d} load = {1:e}, Jint = {2:e}  ( = {3:e} + {4:e} + {5:e} + {6:e})".format(s,load[s],Jint[s],Cleft[s],Ctop[s],Cright[s],Cbot[s])
         f.write("{0:e}\t {1:e} \t{2:e} \t{3:e} \t{4:e} \t{5:e}\n".format(load[s],Jint[s],Cleft[s],Ctop[s],Cright[s],Cbot[s]))

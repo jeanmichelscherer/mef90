@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 from visit import *
 
 def parse(args=None):
@@ -71,6 +72,8 @@ def plot(opts):
     import shutil
     import math
     
+    AddArgument("-nowin")
+    Launch()
     ##  
     ## Open the database
     ##
