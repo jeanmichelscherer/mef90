@@ -1111,9 +1111,9 @@ contains
       f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
       Do s = 1,12
          m = m_s(:,s) 
-         n = n_s(:,s) 
-         MatrixMu = ((m .TensP. n) + (n .TensP. m)) / normS   
-         ResolvedShearStress(s) =  Stress3DCrystal .DotP. MatrixMu     
+         n = n_s(:,s)
+         MatrixMu = ((m .TensP. n) + (n .TensP. m)) / normS
+         ResolvedShearStress(s) =  Stress3DCrystal .DotP. MatrixMu   
          if (myctx_ptr%isViscousPlasticity) then    
             PlasticSlipIncrement(s) = dt * myctx_ptr%ViscosityGamma0 * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
                                     & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
@@ -1138,7 +1138,6 @@ contains
             active = active + 1
          end if
       End Do
-      !print *,'active = ', active
       !TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
       !h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
