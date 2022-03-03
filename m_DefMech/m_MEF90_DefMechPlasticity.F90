@@ -353,7 +353,9 @@ contains
          Stress%ZZ = lambda*(Trace(Strain)) + 2*mu*(Strain%ZZ+ Trace(xMatS))
       endif
    
-      dt = 0.1
+      myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = 0.0_Kr
+   
+      dt = 0.01_Kr
       !f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow )
       !g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - myctx_ptr%YieldStress
       f(1) = StiffnessA * 0.5_Kr * (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS)) .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
@@ -362,19 +364,18 @@ contains
          PlasticMultiplierIncrement = dt * myctx_ptr%ViscosityGamma0 * MAX( (StiffnessA*sigmaeq - StiffnessB*myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
          !PlasticMultiplierIncrement = dt * myctx_ptr%ViscosityGamma0 * MAX( (sigmaeq - StiffnessB*myctx_ptr%YieldStress) / (StiffnessB*myctx_ptr%YieldStress) , 0. )**myctx_ptr%ViscosityN
          TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * deviatoricPart(Stress)
-         myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) +&
+         myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) +&
               & (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
-              & (ABS(PlasticMultiplierIncrement)/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-         f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+              & (ABS(PlasticMultiplierIncrement)/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))         
       else
          PlasticMultiplierIncrement = dt * myctx_ptr%eta * MAX( (StiffnessA*sigmaeq -  StiffnessB*myctx_ptr%YieldStress) / myctx_ptr%YieldStress , 0. )**myctx_ptr%ViscosityN
          !PlasticMultiplierIncrement = dt * myctx_ptr%eta * MAX( (sigmaeq -  StiffnessB*myctx_ptr%YieldStress) / (StiffnessB*myctx_ptr%YieldStress) , 0. )**myctx_ptr%ViscosityN
          TotalPlasticIncrement = PlasticMultiplierIncrement * 1.5_Kr / sigmaeq * deviatoricPart(Stress)
-         myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation =  (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) +&
+         myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation =  myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + (myctx_ptr%YieldStress * ABS(PlasticMultiplierIncrement)) +&
               & (dt * myctx_ptr%YieldStress * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
               & (ABS(PlasticMultiplierIncrement)/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-         f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
-      endif 
+      endif
+      f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
       h(1) = NORM(PlasticStrainFlow - TotalPlasticIncrement)
    end subroutine FHG_VONMISESVISCOUS
 
@@ -942,6 +943,7 @@ contains
 
       TotalPlasticIncrementCrystal = 0.0_Kr
       TotalPlasticIncrement        = 0.0_Kr
+      myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = 0.0_Kr
       
       normS = (2.0_Kr*SQRT(1.0_Kr))
       
@@ -949,7 +951,7 @@ contains
       !!!     slip increment. 
       !!!     The total strain increment could also be useful, to implement a
       !!!     rate-independent model based on Forest and Rubin 2020..
-      dt = 0.1_Kr !myctx_ptr%number_of_iterations !L1SQP !numberOfIterations !iter !0.1
+      dt = 0.01_Kr !myctx_ptr%number_of_iterations !L1SQP !numberOfIterations !iter !0.1
 
       f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
       Do s = 1,1
@@ -963,10 +965,9 @@ contains
                                     & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
             myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)   
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +&
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +&
                  & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
                  & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
          else
             PlasticSlipIncrement(s) = dt * myctx_ptr%eta * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
                                     & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
@@ -974,12 +975,12 @@ contains
             ! OR ill-posed inequality constraints
             !g(s) = ABS(ResolvedShearStress(s)) -  myctx_ptr%YieldTau0
             !TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +&
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +&
                  & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
-                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))           
          endif 
       End Do
+      f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
       !TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
       !h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
@@ -1103,9 +1104,10 @@ contains
 
       TotalPlasticIncrementCrystal = 0.0_Kr
       TotalPlasticIncrement        = 0.0_Kr
+      myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = 0.0_Kr
 
       normS = (2.0_Kr*SQRT(6.0_Kr))
-      dt = 0.1_Kr
+      dt = 0.01_Kr
       active = 0
 
       f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
@@ -1119,25 +1121,24 @@ contains
                                     & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
             myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +& 
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +& 
                  & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%ViscosityGamma0*&
-                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation          
+                 & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))         
          else
             PlasticSlipIncrement(s) = dt * myctx_ptr%eta * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
                                     & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) - StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
             !PlasticSlipIncrement(s) = SIGN(1.0_Kr, ResolvedShearStress(s)) * MAX( ABS(myctx_ptr%plasticSlipsVariation(s)) + dt*myctx_ptr%eta * MAX( (ABS(StiffnessA*ResolvedShearStress(s)) - StiffnessB*myctx_ptr%YieldTau0) / myctx_ptr%YieldTau0 , 0. ) , 0.0_Kr)                        
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu)
             myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
-            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +& 
+            myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + (myctx_ptr%YieldTau0 * ABS(PlasticSlipIncrement(s))) +& 
                  & (dt * myctx_ptr%YieldTau0 * ((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)*myctx_ptr%eta*&
                  & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%eta))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN))
-            f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
          endif
          if ((ABS(StiffnessA*ResolvedShearStress(s)) - StiffnessB*myctx_ptr%YieldTau0)>0) then
             active = active + 1
          end if
       End Do
+      f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
       !TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,MatrixR)
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
       !h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
