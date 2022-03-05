@@ -37,14 +37,12 @@ Module m_MEF90_Materials_Types
       PetscReal          :: phi1,Phi,phi2
       Type(Vect3D)       :: V1,V2,V3
       PetscBool          :: fromEuler
-!#if (PETSC_SIZEOF_INT == 4)
-      ! With 4-byte integers, this declared type is 4-bytes shy of being
-      ! 8-byte aligned, which can be problematic for arrays of this type.
-      ! The MEF90HookesLaw2D has an extra PetscBool that keeps it 8-byte
-      ! aligned, so we'll mimic that:
-!      PetscBool          :: padding = PETSC_FALSE
-!#endif
    End Type MEF90RotationMatrix3D
+   
+   Type MEF90InteractionMatrix
+      PetscReal,dimension(12,12)    :: him
+      PetscReal                     :: h1,h2,h3,h4,h5,h6,h7 ! For FCC: hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
+   End Type MEF90InteractionMatrix
 
    Type MEF90MatProp2D_Type
       PetscReal                     :: Density                                          ! rho
@@ -89,6 +87,9 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
       PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient
       Type(MEF90RotationMatrix3D)   :: RotationMatrix                                   ! rotation matrix from the global frame to the material frame: X_local = R . X_global
+      Type(MEF90InteractionMatrix)  :: InteractionMatrix                                ! hardening interaction matrix for crystal plasticity
+      PetscReal                     :: YieldQ                                           ! Q term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp))  
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp2D_Type
 
@@ -135,6 +136,9 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
       PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient
       Type(MEF90RotationMatrix3D)   :: RotationMatrix                                   ! rotation matrix from the global frame to the material frame: X_local = R . X_global
+      Type(MEF90InteractionMatrix) :: InteractionMatrix                                 ! hardening interaction matrix for crystal plasticity
+      PetscReal                     :: YieldQ                                           ! Q term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp)) 
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp3D_Type
 
@@ -193,9 +197,25 @@ Module m_MEF90_Materials_Types
       1.0_Kr,                                                                          & ! ViscosityN
       1.0_Kr,                                                                          & ! eta_0
       10.0_Kr,                                                                         & ! eta_m
-      MEF90RotationMatrix3D(MEF90Mat3DIdentity,0.0_Kr,0.0_Kr,0.0_Kr,                   & ! RotationMatrix, phi1, Phi, phi2
-      Vect3D(1.0_Kr,0.0_Kr,0.0_Kr),Vect3D(0.0_Kr,1.0_Kr,0.0_Kr),                       & ! V1, V2
+      MEF90RotationMatrix3D(MEF90Mat3DIdentity,0.0_Kr,0.0_Kr,0.0_Kr,                   & ! RotationMatrix, phi1, Phi, phi2,
+      Vect3D(1.0_Kr,0.0_Kr,0.0_Kr),Vect3D(0.0_Kr,1.0_Kr,0.0_Kr),                       & ! V1, V2,
       Vect3D(0.0_Kr,0.0_Kr,1.0_Kr),.False.),                                           & ! V3, fromEuler
+      MEF90InteractionMatrix(                                                       &
+      reshape((/ 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr /), (/12,12/)),                   &
+      1.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr),                               &
+      0.0_Kr,                                                                          & ! YieldQ
+      0.0_Kr,                                                                          & ! Yieldb
       "MEF90Mathium2D")
 
    Type(MEF90MatProp3D_Type),Parameter     :: MEF90Mathium3D = MEF90MatProp3D_Type(    &
@@ -252,9 +272,25 @@ Module m_MEF90_Materials_Types
       1.0_Kr,                                                                          & ! ViscosityN
       1.0_Kr,                                                                          & ! eta_0
       10.0_Kr,                                                                         & ! eta_m
-      MEF90RotationMatrix3D(MEF90Mat3DIdentity,0.0_Kr,0.0_Kr,0.0_Kr,                   & ! RotationMatrix, phi1, Phi, phi2
-      Vect3D(1.0_Kr,0.0_Kr,0.0_Kr),Vect3D(0.0_Kr,1.0_Kr,0.0_Kr),                       & ! V1, V2
+      MEF90RotationMatrix3D(MEF90Mat3DIdentity,0.0_Kr,0.0_Kr,0.0_Kr,                   & ! RotationMatrix, phi1, Phi, phi2,
+      Vect3D(1.0_Kr,0.0_Kr,0.0_Kr),Vect3D(0.0_Kr,1.0_Kr,0.0_Kr),                       & ! V1, V2,
       Vect3D(0.0_Kr,0.0_Kr,1.0_Kr),.False.),                                           & ! V3, fromEuler
+      MEF90InteractionMatrix(                                                       &
+      reshape((/ 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr /), (/12,12/)),                   &
+      1.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr),                               &
+      0.0_Kr,                                                                          & ! YieldQ
+      0.0_Kr,                                                                          & ! Yieldb
       "MEF90Mathium3D")
 End Module m_MEF90_Materials_Types
 
@@ -283,6 +319,7 @@ Contains
       type(MEF90MatProp2D_Type),pointer       :: data
       PetscErrorCode                          :: ierr
       PetscReal                               :: normV1,normV2,normV3
+      PetscReal                               :: h1,h2,h3,h4,h5,h6,h7
 
       Call PetscBagGetData(bag,data,ierr)
       Select case(data%HookesLaw%type)
@@ -323,11 +360,28 @@ Contains
          data%RotationMatrix%fullTensor%YZ = data%RotationMatrix%V3%Y / normV3
          data%RotationMatrix%fullTensor%ZZ = data%RotationMatrix%V3%Z / normV3
       End If
-      !data%RotationMatrix%fullTensor%XX =  cos(data%RotationMatrix%phi1)
-      !data%RotationMatrix%fullTensor%YY =  cos(data%RotationMatrix%phi1)
-      !data%RotationMatrix%fullTensor%XY = -sin(data%RotationMatrix%phi1)
-      !data%RotationMatrix%fullTensor%YX =  sin(data%RotationMatrix%phi1)
       !Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1)
+      
+      h1=data%InteractionMatrix%h1
+      h2=data%InteractionMatrix%h2
+      h3=data%InteractionMatrix%h3
+      h4=data%InteractionMatrix%h4
+      h5=data%InteractionMatrix%h5
+      h6=data%InteractionMatrix%h6
+      h7=data%InteractionMatrix%h7
+      data%InteractionMatrix%him = &
+      reshape((/ h1, h2, h2, h5, h6, h6, h6, h4, h3, h6, h3, h4, &
+                 h2, h1, h2, h6, h3, h4, h5, h6, h6, h6, h4, h3, &
+                 h2, h2, h1, h6, h4, h3, h6, h3, h4, h5, h6, h6, &
+                 h5, h6, h6, h1, h2, h2, h4, h6, h3, h4, h3, h6, &
+                 h6, h3, h4, h2, h1, h2, h3, h6, h4, h6, h6, h5, &
+                 h6, h4, h3, h2, h2, h1, h6, h5, h6, h3, h4, h6, &
+                 h6, h5, h6, h4, h3, h6, h1, h2, h2, h4, h6, h3, &
+                 h4, h6, h3, h6, h6, h5, h2, h1, h2, h3, h6, h4, &
+                 h3, h6, h4, h3, h4, h6, h2, h2, h1, h6, h5, h6, &
+                 h6, h6, h5, h4, h6, h3, h4, h3, h6, h1, h2, h2, &
+                 h3, h4, h6, h3, h6, h4, h6, h6, h5, h2, h1, h2, &
+                 h4, h3, h6, h6, h5, h6, h3, h4, h6, h2, h2, h1 /), (/12,12/))   
    End Subroutine PetscBagGetDataMEF90MatProp2D
 End Module m_MEF90_Materials_Interface2D
 
@@ -356,6 +410,7 @@ Contains
       type(MEF90MatProp3D_Type),pointer       :: data
       PetscErrorCode                          :: ierr
       PetscReal                               :: normV1,normV2,normV3
+      PetscReal                               :: h1,h2,h3,h4,h5,h6,h7
 
       Call PetscBagGetData(bag,data,ierr)
       Select case(data%HookesLaw%type)
@@ -390,8 +445,29 @@ Contains
          data%RotationMatrix%fullTensor%YZ = data%RotationMatrix%V3%Y / normV3
          data%RotationMatrix%fullTensor%ZZ = data%RotationMatrix%V3%Z / normV3
       End If
-      !data%RotationMatrix%fullTensor = Transpose( data%RotationMatrix%fullTensor )
       !Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1,data%Phi,data%phi2)
+      
+      ! hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
+      h1=data%InteractionMatrix%h1
+      h2=data%InteractionMatrix%h2
+      h3=data%InteractionMatrix%h3
+      h4=data%InteractionMatrix%h4
+      h5=data%InteractionMatrix%h5
+      h6=data%InteractionMatrix%h6
+      h7=data%InteractionMatrix%h7      
+      data%InteractionMatrix%him = &
+      reshape((/ h1, h2, h2, h5, h6, h6, h6, h4, h3, h6, h3, h4, &
+                 h2, h1, h2, h6, h3, h4, h5, h6, h6, h6, h4, h3, &
+                 h2, h2, h1, h6, h4, h3, h6, h3, h4, h5, h6, h6, &
+                 h5, h6, h6, h1, h2, h2, h4, h6, h3, h4, h3, h6, &
+                 h6, h3, h4, h2, h1, h2, h3, h6, h4, h6, h6, h5, &
+                 h6, h4, h3, h2, h2, h1, h6, h5, h6, h3, h4, h6, &
+                 h6, h5, h6, h4, h3, h6, h1, h2, h2, h4, h6, h3, &
+                 h4, h6, h3, h6, h6, h5, h2, h1, h2, h3, h6, h4, &
+                 h3, h6, h4, h3, h4, h6, h2, h2, h1, h6, h5, h6, &
+                 h6, h6, h5, h4, h6, h3, h4, h3, h6, h1, h2, h2, &
+                 h3, h4, h6, h3, h6, h4, h6, h6, h5, h2, h1, h2, &
+                 h4, h3, h6, h6, h5, h6, h3, h4, h6, h2, h2, h1 /), (/12,12/)) 
    End Subroutine PetscBagGetDataMEF90MatProp3D
 End Module m_MEF90_Materials_Interface3D
 
@@ -554,22 +630,25 @@ Contains
       Call PetscBagRegisterReal(bag,matprop%RotationMatrix%Phi,default%RotationMatrix%Phi,'RotationMatrix_Phi','[radians] (Phi) Second Bunge-Euler angle',ierr)
       Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi2,default%RotationMatrix%phi2,'RotationMatrix_phi2','[radians] (phi2) Third Bunge-Euler angle',ierr)
       matprop%RotationMatrix%V1 = default%RotationMatrix%V1
-      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V1,3,'RotationMatrix_V1','[] V1 First column of the rotation matrix',ierr)
+      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V1,3,'RotationMatrix_V1','[] (V1) First column of the rotation matrix',ierr)
       matprop%RotationMatrix%V2 = default%RotationMatrix%V2
-      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V2,3,'RotationMatrix_V2','[] V2 Second column of the rotation matrix',ierr)
+      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V2,3,'RotationMatrix_V2','[] (V2) Second column of the rotation matrix',ierr)
       matprop%RotationMatrix%V3 = default%RotationMatrix%V3
-      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V3,3,'RotationMatrix_V3','[] V3 Third column of the rotation matrix',ierr)      
+      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V3,3,'RotationMatrix_V3','[] (V3) Third column of the rotation matrix',ierr)      
       Call PetscBagRegisterBool(bag,matprop%RotationMatrix%fromEuler,default%RotationMatrix%fromEuler,'RotationMatrix_fromEuler','Define rotation matrix from Bunge-Euler angles',ierr);CHKERRQ(ierr)
-      !Call PetscBagSetFromOptions(bag,ierr)
-      !matprop%RotationMatrix%fullTensor%XX =  cos(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)-sin(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%XY =  sin(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)+cos(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%YX = -cos(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)-sin(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%YY = -sin(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%phi2)+cos(matprop%RotationMatrix%phi1)*cos(matprop%RotationMatrix%phi2)*cos(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%XZ =  sin(matprop%RotationMatrix%phi2)*sin(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%YZ =  cos(matprop%RotationMatrix%phi2)*sin(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%ZX =  sin(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%ZY = -cos(matprop%RotationMatrix%phi1)*sin(matprop%RotationMatrix%Phi)
-      !matprop%RotationMatrix%fullTensor%ZZ =  cos(matprop%RotationMatrix%Phi)
+
+      !For FCC: hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h1,default%InteractionMatrix%h1,'InteractionMatrix_1','[] (h1) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h2,'InteractionMatrix_2','[] (h2) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h3,'InteractionMatrix_3','[] (h3) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h3,default%InteractionMatrix%h4,'InteractionMatrix_4','[] (h4) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h4,default%InteractionMatrix%h5,'InteractionMatrix_5','[] (h5) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h5,default%InteractionMatrix%h6,'InteractionMatrix_6','[] (h6) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h6,default%InteractionMatrix%h7,'InteractionMatrix_7','[] (h7) hardening interaction',ierr)
+      
+      Call PetscBagRegisterReal(bag,matprop%YieldQ,default%YieldQ,'YieldQ','[N.m^(-2)] (Q) Exponential hardening R0 + Q(1-exp(-bp)) ',ierr)
+      Call PetscBagRegisterReal(bag,matprop%Yieldb,default%Yieldb,'Yieldb','[] (b) Exponential hardening R0 + Q(1-exp(-bp))',ierr)
+
    End Subroutine PetscBagRegisterMEF90MatProp2D
 
 #undef __FUNCT__
@@ -651,16 +730,37 @@ Contains
       Call PetscBagRegisterReal(bag,matprop%eta_0,default%eta_0,'eta_0','[s^(-1)] Reference penalty (similar to a plastic deformation rate)',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_m,default%eta_m,'eta_m','[unit-less] Geometric sequence quotient of rate independent model',ierr);CHKERRQ(ierr)
       
-      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi1,default%RotationMatrix%phi1,'RotationMatrix_phi1','[radians] (phi1) First Bunge angle',ierr)
-      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%Phi,default%RotationMatrix%Phi,'RotationMatrix_Phi','[radians] (Phi) Second Bunge angle',ierr)
-      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi2,default%RotationMatrix%phi2,'RotationMatrix_phi2','[radians] (phi2) Third Bunge angle',ierr)
+      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi1,default%RotationMatrix%phi1,'RotationMatrix_phi1','[radians] (phi1) First Bunge-Euler angle',ierr)
+      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%Phi,default%RotationMatrix%Phi,'RotationMatrix_Phi','[radians] (Phi) Second Bunge-Euler angle',ierr)
+      Call PetscBagRegisterReal(bag,matprop%RotationMatrix%phi2,default%RotationMatrix%phi2,'RotationMatrix_phi2','[radians] (phi2) Third Bunge-Euler angle',ierr)
       matprop%RotationMatrix%V1 = default%RotationMatrix%V1
-      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V1,3,'RotationMatrix_V1','[] V1 First column of the rotation matrix',ierr)
+      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V1,3,'RotationMatrix_V1','[] (V1) First column of the rotation matrix',ierr)
       matprop%RotationMatrix%V2 = default%RotationMatrix%V2
-      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V2,3,'RotationMatrix_V2','[] V2 Second column of the rotation matrix',ierr)
+      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V2,3,'RotationMatrix_V2','[] (V2) Second column of the rotation matrix',ierr)
       matprop%RotationMatrix%V3 = default%RotationMatrix%V3
-      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V3,3,'RotationMatrix_V3','[] V3 Third column of the rotation matrix',ierr)      
+      Call PetscBagRegisterRealArray(bag,matprop%RotationMatrix%V3,3,'RotationMatrix_V3','[] (V3) Third column of the rotation matrix',ierr)      
       Call PetscBagRegisterBool(bag,matprop%RotationMatrix%fromEuler,default%RotationMatrix%fromEuler,'RotationMatrix_fromEuler','Define rotation matrix from Bunge-Euler angles',ierr);CHKERRQ(ierr)
+
+      !For FCC: hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h1,default%InteractionMatrix%h1,'InteractionMatrix_1','[] (h1) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h2,'InteractionMatrix_2','[] (h2) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h3,'InteractionMatrix_3','[] (h3) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h3,default%InteractionMatrix%h4,'InteractionMatrix_4','[] (h4) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h4,default%InteractionMatrix%h5,'InteractionMatrix_5','[] (h5) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h5,default%InteractionMatrix%h6,'InteractionMatrix_6','[] (h6) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h6,default%InteractionMatrix%h7,'InteractionMatrix_7','[] (h7) hardening interaction',ierr)
+      
+      Call PetscBagRegisterReal(bag,matprop%YieldQ,default%YieldQ,'YieldQ','[N.m^(-2)] (Q) Exponential hardening R0 + Q(1-exp(-bp)) ',ierr)
+      Call PetscBagRegisterReal(bag,matprop%Yieldb,default%Yieldb,'Yieldb','[] (b) Exponential hardening R0 + Q(1-exp(-bp))',ierr)
+      
+      !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hSelf,default%InteractionMatrix%hSelf,'InteractionMatrix_self','[] Self hardening interaction',ierr)
+      !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hCoplanar,default%InteractionMatrix%hCoplanar,'InteractionMatrix_coplanar','[] Coplanar hardening interaction',ierr)
+      !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hHirth,default%InteractionMatrix%hHirth,'InteractionMatrix_Hirth','[] Hirth hardening interaction',ierr)
+      !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hLomer,default%InteractionMatrix%hLomer,'InteractionMatrix_Lomer','[] Lomer hardening interaction',ierr)
+      !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hColinear,default%InteractionMatrix%hColinear,'InteractionMatrix_colinear','[] Colinear hardening interaction',ierr)
+      !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hGlissile0,default%InteractionMatrix%hGlissile0,'InteractionMatrix_glissile0','[] Glissile 0 degree hardening interaction',ierr)
+      !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hGlissile60,default%InteractionMatrix%hGlissile60,'InteractionMatrix_glissile60','[] Glissile 60 degree hardening interaction',ierr)
+
       !Call PetscBagSetFromOptions(bag,ierr)
 
    End Subroutine PetscBagRegisterMEF90MatProp3D
