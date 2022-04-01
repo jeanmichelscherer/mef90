@@ -259,7 +259,15 @@ contains
          g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - myctx_ptr%YieldStress
       else
          f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow )
-         g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )*myctx_ptr%YieldStress
+         g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )*myctx_ptr%YieldStress        
+         !if ((sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) )) > (2.0_Kr*myctx_ptr%YieldStress)) then
+!         if (Stress%YY > 2*myctx_ptr%YieldStress) then
+!            print *,"s_eq = ", (sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) )), " > 2*myctx_ptr%YieldStress = ", 2.0_Kr*myctx_ptr%YieldStress
+!            print *,"Stress%XX = ", Stress%XX
+!            print *,"Stress%YY = ", Stress%YY
+!            print *,"Stress%ZZ = ", Stress%ZZ
+!            print *,"Stress%XY = ", Stress%XY
+!         end if
       endif
 
    end subroutine FHG_VONMISESPLANETHEORY
@@ -1096,19 +1104,20 @@ contains
       Stress3D             = Stress
       Strain3D             = myctx_ptr%InelasticStrain
       PlasticStrainFlow3D  = xMatS - myctx_ptr%PlasticStrainOld
-      PlasticStrain3D = xMatS
+      PlasticStrain3D      = xMatS
 #endif
       
       Stress3DCrystal = MatRaRt(Stress3D,myctx_ptr%RotationMatrix3D%fullTensor)
-      
-      normS = (2.0_Kr*SQRT(6.0_Kr))    
+
+      normS = (2.0_Kr*SQRT(6.0_Kr))  
+      Do s=1,12
+         m = m_s(:,s) 
+         n = n_s(:,s)
+         MatrixMu(s) = ((m .TensP. n) + (n .TensP. m)) / normS
+      end do
+       
       if ( .NOT. (myctx_ptr%YieldQ==0.0_Kr) ) then
          PlasticStrain3DCrystal = MatRaRt(PlasticStrain3D,myctx_ptr%RotationMatrix3D%fullTensor)         
-         Do s=1,12
-             m = m_s(:,s) 
-             n = n_s(:,s)
-            MatrixMu(s) = ((m .TensP. n) + (n .TensP. m)) / normS
-         end do
          PlasticSlips(s) = PlasticStrain3DCrystal .DotP. MatrixMu(s)
       end if
 
@@ -1128,7 +1137,7 @@ contains
          CRSS = myctx_ptr%YieldTau0
          if ( .NOT. (myctx_ptr%YieldQ==0.0_Kr) ) then
             Do k=1,12
-               CRSS = CRSS + myctx_ptr%YieldQ * myctx_ptr%InteractionMatrix%him(s,k) * (1.0_Kr - EXP( -myctx_ptr%Yieldb * ABS(PlasticSlips(k)) ))
+               CRSS = CRSS + myctx_ptr%YieldQ * myctx_ptr%InteractionMatrix%him(s,k) * (1.0_Kr - EXP(-myctx_ptr%Yieldb * ABS(PlasticSlips(k)) ))
             end do
          end if
          if (myctx_ptr%isViscousPlasticity) then    
@@ -1161,6 +1170,7 @@ contains
       !print *,PlasticStrainFlow3D%ZZ-TotalPlasticIncrement%ZZ
 #elif MEF90_DIM==3
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
+      !print *,h(1)
 #endif
    end subroutine FHG_CRYSTALBCC
 
@@ -1449,6 +1459,7 @@ contains
    PlasticityCtx%isPlaneStress = .FALSE.
 #endif
 
+
                Call SNLPNew(s,snlp_n,snlp_m,snlp_p,snlp_fhg,snlp_Dfhg,snlp_ctx)
                QuadratureOrder = 2 * (elemDisplacementType%order - 1)
                Call MEF90Element_Create(MEF90DefMechCtx%DMVect,setIS,elemDisplacement,QuadratureOrder,CellSetOptions%elemTypeShortIDDisplacement,ierr);CHKERRQ(ierr)
@@ -1479,7 +1490,7 @@ contains
                   PlasticityCtx%plasticStrainPrevious = plasticStrainLoc
                   PlasticityCtx%cumulatedDissipatedPlasticEnergy = cumulatedDissipatedPlasticEnergyOldLoc(1)
 
-                  s%show_progress = 0 !1
+                  s%show_progress = 0
 
                   !!! This is a bit dangerous:
                   !!! If PetscReal is not the same as c_double, this call will fail
