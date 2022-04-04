@@ -1324,7 +1324,7 @@ Contains
                   End If
                   cellSize   = cellSize + elemDisplacement(cell)%Gauss_C(iGauss)
                End Do ! iGauss
-
+                  
                stressCell    = stressCell / cellSize
                stressCellPtr = stressCell
                Call SectionRealUpdate(stressSec,cellID(cell),stressCellPtr,INSERT_VALUES,ierr);CHKERRQ(ierr)
@@ -1694,7 +1694,7 @@ Contains
                   Call SectionRealRestrict(cumulatedDissipatedPlasticEnergySec,cellID(cell),cumulatedDissipatedPlasticEnergyLoc,ierr);CHKERRQ(ierr)
                   cumulatedDissipatedPlasticEnergyCell = cumulatedDissipatedPlasticEnergyLoc(1)
                Else
-                  plasticStrainCell = 0.0_Kr
+                  cumulatedDissipatedPlasticEnergyCell = 0.0_Kr
                End If        
                          
                !!! Loop over Gauss point, evaluate fields and assemble the cell contribution to the residual
@@ -1772,6 +1772,7 @@ Contains
 !             elasticEnergyDensityGauss = elasticEnergyDensityGauss + ( Stress_ZZ_planeStrain + matprop%HookesLaw%lambda*trace(inelasticStrainGauss - plasticStrainCell) ) * trace(plasticStrainCell)
 !           End If
 !#endif
+
            If (N==1.0_Kr) Then
               Do iDoF2 = 1,numDofDamage
                  residualLoc(iDoF2) = residualLoc(iDoF2) + elemDamage(cell)%Gauss_C(iGauss) * ( &

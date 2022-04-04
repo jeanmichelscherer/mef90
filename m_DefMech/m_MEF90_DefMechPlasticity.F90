@@ -259,7 +259,7 @@ contains
          g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - myctx_ptr%YieldStress
       else
          f(1) = ( PlasticStrainFlow .DotP. PlasticStrainFlow )
-         g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )*myctx_ptr%YieldStress        
+         g(1) = StiffnessA * sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) ) - ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )*myctx_ptr%YieldStress
          !if ((sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) )) > (2.0_Kr*myctx_ptr%YieldStress)) then
 !         if (Stress%YY > 2*myctx_ptr%YieldStress) then
 !            print *,"s_eq = ", (sqrt( (3.0/2.0)*( deviatoricPart(Stress) .dotP. deviatoricPart(Stress) ) )), " > 2*myctx_ptr%YieldStress = ", 2.0_Kr*myctx_ptr%YieldStress
@@ -1423,6 +1423,7 @@ contains
                PlasticityCtx%residualStiffness = matpropSet%residualStiffness
                PlasticityCtx%YieldStress = matpropSet%YieldStress
                PlasticityCtx%DuctileCouplingPower = matpropSet%DuctileCouplingPower
+               PlasticityCtx%isNoPlCoupling = matpropSet%isNoPlCoupling
                PlasticityCtx%CoefficientDruckerPrager = matpropSet%CoefficientDruckerPrager
                PlasticityCtx%CoefficientCapModel0 = matpropSet%CoefficientCapModel0
                PlasticityCtx%CoefficientCapModel1 = matpropSet%CoefficientCapModel1
