@@ -16,25 +16,46 @@ def parse(args=None):
     parser.add_argument("--time_numstep",type=int,help="number of time step",default=11)
     parser.add_argument("--E",type=float,help="Youngs modulus",default=1.)
     parser.add_argument("--nu",type=float,help="Poisson Ratio",default=.3)
+    parser.add_argument("--Gc",type=float,help="Critical Energy Release Rate",default=1.)
     parser.add_argument("--ampl",type=float,help="Amplification",default=1.)    
     parser.add_argument("--initialpos",type=float,nargs=3,help="initial crack tip postion",default=[0.,0,0])
     parser.add_argument("--cs",type=int,nargs='*',help="list of cell sets where surfing boundary displacements are applied",default=[])
     parser.add_argument("--vs",type=int,nargs='*',help="list of vertex sets where surfing boundary displacements are applied",default=[])
+    parser.add_argument("--plasticity",default=False,action="store_true",help="Add extended variables for plasticity related fields")
+    parser.add_argument("--plasticslips",default=False,action="store_true",help="Add plastic slips variables")
     parser.add_argument("--force",action="store_true",default=False,help="Overwrite existing files without prompting")
+    parser.add_argument("--planestrain",action="store_true",default=False,help="Apply plane strain surfing BCs: kappa=3-4*nu")
     return parser.parse_args()
     
-def exoformat(e):
-    global_variable_name = ["Elastic Energy","Work","Surface Energy","Total Energy"]
-    if e.num_dimensions() == 2: 
-        node_variable_name  = ["Temperature","Damage","Displacement_X","Displacement_Y"]
-        element_variable_name   = ["External_Temperature","Heat_Flux","Pressure_Force",
-                                   "Force_X","Force_Y",
-                                   "Stress_XX","Stress_YY","Stress_XY"]
+def exoformat(e,plasticity=False,plasticslips=False):
+    if plasticity:
+        global_variable_name = ["Elastic Energy","Work","Surface Energy","Total Energy","Dissipation Plastic"]
+        if e.num_dimensions() == 2: 
+            node_variable_name  = ["Temperature","Damage","Displacement_X","Displacement_Y"]
+            element_variable_name   = ["External_Temperature","Heat_Flux","Pressure_Force",
+                                       "Force_X","Force_Y",
+                                       "Stress_XX","Stress_YY","Stress_XY",
+                                       "Cumulated_Plastic_Energy","plasticStrain_XX","plasticStrain_YY","plasticStrain_XY"]
+        else:
+            node_variable_name  = ["Temperature","Damage","Displacement_X","Displacement_Y","Displacement_Z"]
+            element_variable_name   = ["External_Temperature","Heat_Flux","Pressure_Force",
+                                       "Force_X","Force_Y","Force_Z",
+                                       "Stress_XX","Stress_YY","Stress_ZZ","Stress_YZ","Stress_XZ","Stress_XY",
+                                       "Cumulated_Plastic_Energy","plasticStrain_XX","plasticStrain_YY","plasticStrain_ZZ","plasticStrain_XY","plasticStrain_YZ","plasticStrain_XZ","plasticStrain_XY"]
+        if plasticslips:
+            element_variable_name += ["plasticslip_0","plasticslip_1","plasticslip_2","plasticslip_3","plasticslip_4","plasticslip_5","plasticslip_6","plasticslip_7","plasticslip_8","plasticslip_9","plasticslip_10","plasticslip_11"]
     else:
-        node_variable_name  = ["Temperature","Damage","Displacement_X","Displacement_Y","Displacement_Z"]
-        element_variable_name   = ["External_Temperature","Heat_Flux","Pressure_Force",
-                                   "Force_X","Force_Y","Force_Z",
-                                   "Stress_XX","Stress_YY","Stress_ZZ","Stress_YZ","Stress_XZ","Stress_XY"]
+        global_variable_name = ["Elastic Energy","Work","Surface Energy","Total Energy"]
+        if e.num_dimensions() == 2: 
+            node_variable_name  = ["Temperature","Damage","Displacement_X","Displacement_Y"]
+            element_variable_name   = ["External_Temperature","Heat_Flux","Pressure_Force",
+                                       "Force_X","Force_Y",
+                                       "Stress_XX","Stress_YY","Stress_XY"]
+        else:
+            node_variable_name  = ["Temperature","Damage","Displacement_X","Displacement_Y","Displacement_Z"]
+            element_variable_name   = ["External_Temperature","Heat_Flux","Pressure_Force",
+                                       "Force_X","Force_Y","Force_Z",
+                                       "Stress_XX","Stress_YY","Stress_ZZ","Stress_YZ","Stress_XZ","Stress_XY"]
     e.set_global_variable_number(0)
     e.set_node_variable_number(len(node_variable_name))
     for i in range(len(node_variable_name)):
@@ -51,11 +72,17 @@ def cart2polar(x, y):
     theta = np.arctan2(y, x)
     return r, theta
         
-def scalingBC(e,t,Xc,cslist,vslist,E,nu):
+def surfingBC(e,t,Xc,cslist,vslist,E,nu,Gc,ampl,planestrain):
     import numpy as np
     
-    kappa = (3.0-nu)/(1.0+nu)
+    if planestrain:
+        kappa = (3.0-nu)/(1.0+nu)
+        Ep    = E / (1. - nu**2)
+    else:
+        kappa = 3.0-4.0*nu
+        Ep    = E
     mu = E / (1. + nu) * .5
+    KI = np.sqrt(Gc * Ep)
 
     dim = e.num_dimensions()
     X,Y,Z=e.get_coords()
@@ -69,21 +96,23 @@ def scalingBC(e,t,Xc,cslist,vslist,E,nu):
             for v in vertices:
                 r,theta = cart2polar(X[v-1]-Xc[0],Y[v-1]-Xc[1])
                 z = Z[v-1]-Xc[2]
-                U[0,v-1] = t * np.sqrt(r / np.pi * .5) / mu * .5 * np.cos(theta * .5) * (kappa - np.cos(theta))
-                U[1,v-1] = t * np.sqrt(r / np.pi * .5) / mu * .5 * np.sin(theta * .5) * (kappa - np.cos(theta))
+                U[0,v-1] = t * ampl * KI * np.sqrt(r / np.pi * .5) / mu * .5 * np.cos(theta * .5) * (kappa - np.cos(theta))
+                U[1,v-1] = t * ampl * KI * np.sqrt(r / np.pi * .5) / mu * .5 * np.sin(theta * .5) * (kappa - np.cos(theta))
                 U[2,v-1] = 0.0
         
     for set in vslist:
         for v in e.get_node_set_nodes(set):
             r,theta = cart2polar(X[v-1]-Xc[0],Y[v-1]-Xc[1])
             z = Z[v-1]
-            U[0,v-1] = t * np.sqrt(r / np.pi * .5) / mu * .5 * np.cos(theta * .5) * (kappa - np.cos(theta))
-            U[1,v-1] = t * np.sqrt(r / np.pi * .5) / mu * .5 * np.sin(theta * .5) * (kappa - np.cos(theta))
+            U[0,v-1] = t * ampl * KI * np.sqrt(r / np.pi * .5) / mu * .5 * np.cos(theta * .5) * (kappa - np.cos(theta))
+            U[1,v-1] = t * ampl * KI * np.sqrt(r / np.pi * .5) / mu * .5 * np.sin(theta * .5) * (kappa - np.cos(theta))
             U[2,v-1] = 0.0
     return U
 
 def main():
     import numpy as np
+    import os
+    import pymef90
     options = parse()
     
     if  os.path.exists(options.outputfile):
@@ -107,14 +136,14 @@ def main():
     QA = [os.path.basename(sys.argv[0]),os.path.basename(__file__),datetime.date.today().strftime('%Y%m%d'),datetime.datetime.now().strftime("%H:%M:%S")]
     exoout.put_qa_records([[ q[0:31] for q in QA],])
 
-    exoformat(exoout)
+    exoformat(exoout,options.plasticity,options.plasticslips)
     
     dim = exoout.num_dimensions()
     step = 0
     for t in np.linspace(options.time_min,options.time_max,options.time_numstep):
-        print "writing step",step+1,t
+        print ("writing step {0}, t = {1:0.4f}".format(step+1,t))
         exoout.put_time(step+1,t)
-        U = scalingBC(exoout,t,options.initialpos,options.cs,options.vs,options.E,options.nu)
+        U = surfingBC(exoout,t,options.initialpos,options.cs,options.vs,options.E,options.nu,options.Gc,options.ampl,options.planestrain)
         X,Y,Z=exoout.get_coords()
         exoout.put_node_variable_values("Displacement_X",step+1,U[0,:])
         exoout.put_node_variable_values("Displacement_Y",step+1,U[1,:])
