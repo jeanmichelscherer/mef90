@@ -296,9 +296,11 @@ Module m_MEF90_DefMechCtx
                      MEF90DefMech_PlasticityTypeGreen,                         &
                      MEF90DefMech_PlasticityTypeGurson,                        &
                      MEF90DefMech_PlasticityTypeCrystalSingleSlip,             &
-                     MEF90DefMech_PlasticityTypeCrystalBCC             
+                     MEF90DefMech_PlasticityTypeCrystalBCC,                    &
+                     MEF90DefMech_PlasticityTypeCrystalSingleSlipGammas,       &
+                     MEF90DefMech_PlasticityTypeCrystalBCCGammas
    End Enum
-   Character(len = MEF90_MXSTRLEN),Dimension(16),protected   :: MEF90DefMech_plasticityTypeList
+   Character(len = MEF90_MXSTRLEN),Dimension(18),protected   :: MEF90DefMech_plasticityTypeList
    
    Enum,bind(c)
       enumerator  :: MEF90DefMech_unilateralContactTypeNone = 0,                     &
@@ -387,9 +389,11 @@ Contains
       MEF90DefMech_plasticityTypeList(11) = 'Gurson'
       MEF90DefMech_plasticityTypeList(12) = 'CrystalSingleSlip'
       MEF90DefMech_plasticityTypeList(13) = 'CrystalBCC'
-      MEF90DefMech_plasticityTypeList(14) = 'MEF90DefMech_plasticityType'
-      MEF90DefMech_plasticityTypeList(15) = '_MEF90DefMech_plasticityType'
-      MEF90DefMech_plasticityTypeList(16) = ''
+      MEF90DefMech_plasticityTypeList(14) = 'CrystalSingleSlipGammas'
+      MEF90DefMech_plasticityTypeList(15) = 'CrystalBCCGammas'
+      MEF90DefMech_plasticityTypeList(16) = 'MEF90DefMech_plasticityType'
+      MEF90DefMech_plasticityTypeList(17) = '_MEF90DefMech_plasticityType'
+      MEF90DefMech_plasticityTypeList(18) = ''
 
       MEF90DefMech_unilateralContactTypeList(1) = 'None'
       MEF90DefMech_unilateralContactTypeList(2) = 'HydrostaticDeviatoric'

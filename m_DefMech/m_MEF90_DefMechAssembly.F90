@@ -1708,7 +1708,7 @@ Contains
                   damageGauss = 0.0_Kr
                   gradDamageGauss = 0.0_Kr
                   Do iDof1 = 1,numDofDamage
-                     damageGauss     = damageGauss     + damageDof(iDoF1) * elemDamage(cell)%BF(iDoF1,iGauss)
+                        damageGauss     = damageGauss     + damageDof(iDoF1) * elemDamage(cell)%BF(iDoF1,iGauss)
                      gradDamageGauss = gradDamageGauss + damageDof(iDoF1) * elemDamage(cell)%Grad_BF(iDoF1,iGauss)
                   End Do ! iDof1
 
