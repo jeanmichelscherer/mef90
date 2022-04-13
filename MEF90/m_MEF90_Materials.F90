@@ -89,7 +89,8 @@ Module m_MEF90_Materials_Types
       Type(MEF90RotationMatrix3D)   :: RotationMatrix                                   ! rotation matrix from the global frame to the material frame: X_local = R . X_global
       Type(MEF90InteractionMatrix)  :: InteractionMatrix                                ! hardening interaction matrix for crystal plasticity
       PetscReal                     :: YieldQ                                           ! Q term in the exponential hardening R0 + Q(1-exp(-bp))
-      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp))  
+      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: LinearHardeningSlope                             ! Linear hardening slope  
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp2D_Type
 
@@ -136,9 +137,10 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
       PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient
       Type(MEF90RotationMatrix3D)   :: RotationMatrix                                   ! rotation matrix from the global frame to the material frame: X_local = R . X_global
-      Type(MEF90InteractionMatrix) :: InteractionMatrix                                 ! hardening interaction matrix for crystal plasticity
+      Type(MEF90InteractionMatrix)  :: InteractionMatrix                                ! hardening interaction matrix for crystal plasticity
       PetscReal                     :: YieldQ                                           ! Q term in the exponential hardening R0 + Q(1-exp(-bp))
-      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp)) 
+      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: LinearHardeningSlope                             ! Linear hardening slope
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp3D_Type
 
@@ -216,6 +218,7 @@ Module m_MEF90_Materials_Types
       1.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr),                               &
       0.0_Kr,                                                                          & ! YieldQ
       0.0_Kr,                                                                          & ! Yieldb
+      0.0_Kr,                                                                          & ! LinearHardeningSlope
       "MEF90Mathium2D")
 
    Type(MEF90MatProp3D_Type),Parameter     :: MEF90Mathium3D = MEF90MatProp3D_Type(    &
@@ -291,6 +294,7 @@ Module m_MEF90_Materials_Types
       1.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr),                               &
       0.0_Kr,                                                                          & ! YieldQ
       0.0_Kr,                                                                          & ! Yieldb
+      0.0_Kr,                                                                          & ! LinearHardeningSlope
       "MEF90Mathium3D")
 End Module m_MEF90_Materials_Types
 
@@ -648,6 +652,7 @@ Contains
       
       Call PetscBagRegisterReal(bag,matprop%YieldQ,default%YieldQ,'YieldQ','[N.m^(-2)] (Q) Exponential hardening R0 + Q(1-exp(-bp)) ',ierr)
       Call PetscBagRegisterReal(bag,matprop%Yieldb,default%Yieldb,'Yieldb','[] (b) Exponential hardening R0 + Q(1-exp(-bp))',ierr)
+      Call PetscBagRegisterReal(bag,matprop%LinearHardeningSlope,default%LinearHardeningSlope,'LinearHardeningSlope','[] (H) Slope of the linear strain hardening',ierr)
 
    End Subroutine PetscBagRegisterMEF90MatProp2D
 
@@ -752,6 +757,7 @@ Contains
       
       Call PetscBagRegisterReal(bag,matprop%YieldQ,default%YieldQ,'YieldQ','[N.m^(-2)] (Q) Exponential hardening R0 + Q(1-exp(-bp)) ',ierr)
       Call PetscBagRegisterReal(bag,matprop%Yieldb,default%Yieldb,'Yieldb','[] (b) Exponential hardening R0 + Q(1-exp(-bp))',ierr)
+      Call PetscBagRegisterReal(bag,matprop%LinearHardeningSlope,default%LinearHardeningSlope,'LinearHardeningSlope','[] (H) Slope of the linear strain hardening',ierr)
       
       !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hSelf,default%InteractionMatrix%hSelf,'InteractionMatrix_self','[] Self hardening interaction',ierr)
       !Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%hCoplanar,default%InteractionMatrix%hCoplanar,'InteractionMatrix_coplanar','[] Coplanar hardening interaction',ierr)
