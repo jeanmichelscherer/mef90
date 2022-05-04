@@ -393,15 +393,20 @@ Contains
          data%RotationMatrix2D%fullTensor%XY = data%RotationMatrix2D%V2%X / normV2
          data%RotationMatrix2D%fullTensor%YX = data%RotationMatrix2D%V1%Y / normV1
       End If
-      ! print *,"stiffness before rotation = ",data%HookesLaw%fullTensorLocal
-      HookesLaw3D = Tens4OS3DTransform(data%HookesLaw%fullTensorLocal,data%RotationMatrix%fullTensor)
+      !print *,"stiffness before rotation = ",data%HookesLaw%fullTensorLocal
+      HookesLaw3D = Tens4OSTransform(data%HookesLaw%fullTensorLocal,data%RotationMatrix%fullTensor)
       data%HookesLaw%fullTensor%XXXX = HookesLaw3D%XXXX
       data%HookesLaw%fullTensor%XXYY = HookesLaw3D%XXYY
       data%HookesLaw%fullTensor%XXXY = HookesLaw3D%XXXY
       data%HookesLaw%fullTensor%YYYY = HookesLaw3D%YYYY
       data%HookesLaw%fullTensor%YYXY = HookesLaw3D%YYXY
       data%HookesLaw%fullTensor%XYXY = HookesLaw3D%XYXY
-      ! print *,"stiffness after rotation = ",data%HookesLaw%fullTensor
+      !print *,"stiffness after rotation = ",HookesLaw3D
+      !print *,"phi1 = ",data%RotationMatrix%phi1
+      !print *,"Phi = ",data%RotationMatrix%Phi
+      !print *,"phi2 = ",data%RotationMatrix%phi2
+      !print *,"rotation matrix = ",data%RotationMatrix%fullTensor
+      !print *,"stiffness after rotation = ",data%HookesLaw%fullTensor
       ! Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1)
       
       h1=data%InteractionMatrix%h1
@@ -487,7 +492,7 @@ Contains
          data%RotationMatrix%fullTensor%YZ = data%RotationMatrix%V3%Y / normV3
          data%RotationMatrix%fullTensor%ZZ = data%RotationMatrix%V3%Z / normV3
       End If
-      data%HookesLaw%fullTensor = Tens4OS3DTransform(data%HookesLaw%fullTensorLocal,data%RotationMatrix%fullTensor)
+      data%HookesLaw%fullTensor = Tens4OSTransform(data%HookesLaw%fullTensorLocal,data%RotationMatrix%fullTensor)
       !Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1,data%Phi,data%phi2)
       
       ! hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
