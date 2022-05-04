@@ -1100,7 +1100,6 @@ End Subroutine MEF90DefMechUpdateboundaryDamage
       Type(MEF90DefMechGlobalOptions_Type),pointer       :: MEF90DefMechGlobalOptions
 
       Call PetscBagGetDataMEF90DefMechCtxGlobalOptions(MEF90DefMechCtx%GlobalOptionsBag,MEF90DefMechGlobalOptions,ierr);CHKERRQ(ierr)
-
       !!! cell-based fields are located before nodal ones in exodus files, so saving them first.
       !!! they have no ghost points, so there is no real difference between their local and global vectors
       !!!
@@ -1140,9 +1139,9 @@ End Subroutine MEF90DefMechUpdateboundaryDamage
          End If
       End If
 
-
       If (MEF90DefMechGlobalOptions%cumulatedPlasticDissipationOffset > 0) Then
          If (Associated(MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy)) Then
+            ! This Call takes a while when the number of cell sets increases
             Call VecViewExodusCell(MEF90DefMechCtx%cellDMScal,MEF90DefMechCtx%cumulatedDissipatedPlasticEnergy,MEF90DefMechCtx%MEF90Ctx%IOcomm, &
                                    MEF90DefMechCtx%MEF90Ctx%fileExoUnit,step,MEF90DefMechGlobalOptions%cumulatedPlasticDissipationOffset,ierr);CHKERRQ(ierr)
          Else
