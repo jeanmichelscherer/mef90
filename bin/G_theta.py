@@ -1,7 +1,4 @@
-#visit -cli -nowin -s G_theta.py 
-#visit -cli -nowin -np 12 -l srun -s G_theta.py
-
-#! /usr/bin/env python
+#! /usr/bin/env python2
 from visit import *
 
 
@@ -27,19 +24,21 @@ def Get_G(opts):
     import shutil
     import math
     
+    AddArgument("-nowin")
+    Launch()
     ##  
     ## Open the database
     ##
 
     MyDatabase = opts.inputfile
-    print "Trying to open database %s"%MyDatabase
-    status = OpenDatabase(MyDatabase)
+    print( "Trying to open database %s"%MyDatabase )
+    status = OpenDatabase(MyDatabase,0)
     
-    print "Assumptions: \n"
-    print "(i) 2D domain with a straigth crack (can be extended to a 3D, but it is not supported in this version)\n"
-    print "(ii) homogenous material and cracks stay in the same material property. Do not apply if the crack cross different material properties \n"
-    print "(iii) free stress at crack lips + no lips interpentration (it can be expressed with pressure applied on crack lips, but it is not supported in this version)\n"
-    print "(iv) no force density (it can be expressed with force density, but it is not supported in this version )\n"
+    print( "Assumptions: \n" )
+    print( "(i) 2D domain with a straigth crack (can be extended to a 3D, but it is not supported in this version)\n" )
+    print( "(ii) homogenous material and cracks stay in the same material property. Do not apply if the crack cross different material properties \n" )
+    print( "(iii) free stress at crack lips + no lips interpentration (it can be expressed with pressure applied on crack lips, but it is not supported in this version)\n" )
+    print( "(iv) no force density (it can be expressed with force density, but it is not supported in this version )\n" )
 
     #### Define displacement, stress, and strain
     DefineVectorExpression("Displacement_2D", "{Displacement_X,Displacement_Y}")
@@ -85,7 +84,7 @@ def Get_G(opts):
     filename = opts.inputfile+'_Gtheta.txt'
     f=open(filename,'w')
     f.write("#t             load            G            for  R_inner = %e   R_outer = %e  \n"%(opts.R_inn,opts.R_out))
-    print 'options ',opts
+    print( 'options ',opts )
     for s in range(0,TimeSliderGetNStates(),1):
         SetActiveWindow(1)
         SetTimeSliderState(s)
@@ -97,7 +96,7 @@ def Get_G(opts):
         Query("Weighted Variable Sum")
         G= GetQueryOutputValue()
 
-        print "****** step %i load = %e, G_theta = %e "%(s,t,G)
+        print( "****** step %i load = %e, G_theta = %e "%(s,t,G) )
         f.write("%e \t%e \t%e \n"%(s,t,G))
         f.flush()
         os.fsync(f)
