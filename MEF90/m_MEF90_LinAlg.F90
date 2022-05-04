@@ -2724,15 +2724,19 @@ Contains
       A(3,3,1,2) = T%ZZXY; A(3,3,2,1) = T%ZZXY; A(1,2,3,3) = T%ZZXY; A(2,1,3,3) = T%ZZXY;
 
       A(2,3,2,3) = T%YZYZ; A(2,3,3,2) = T%YZYZ; A(3,2,2,3) = T%YZYZ; A(3,2,3,2) = T%YZYZ;
+
       A(2,3,1,3) = T%YZXZ; A(2,3,3,1) = T%YZXZ; A(3,2,1,3) = T%YZXZ; A(3,2,3,1) = T%YZXZ;
       A(1,3,2,3) = T%YZXZ; A(1,3,3,2) = T%YZXZ; A(3,1,2,3) = T%YZXZ; A(3,1,3,2) = T%YZXZ;
-      A(2,3,1,2) = T%YZXY; A(2,3,2,1) = T%YZXY; A(3,2,1,2) = T%YZXY; A(3,2,2,1) = T%YZXY;
-      A(1,2,2,3) = T%YZXY; A(1,2,3,2) = T%YZXY; A(2,3,1,2) = T%YZXY; A(2,3,2,1) = T%YZXY;
 
-      A(1,2,1,2) = T%XZXZ; A(1,2,2,1) = T%XZXZ; A(2,1,1,2) = T%XZXZ; A(2,1,1,2) = T%XZXZ;
+      A(2,3,1,2) = T%YZXY; A(2,3,2,1) = T%YZXY; A(3,2,1,2) = T%YZXY; A(3,2,2,1) = T%YZXY;
+      A(1,2,2,3) = T%YZXY; A(1,2,3,2) = T%YZXY; A(2,1,2,3) = T%YZXY; A(2,1,3,2) = T%YZXY; !A(2,3,1,2) = T%YZXY; A(2,3,2,1) = T%YZXY;
+
+      A(1,2,1,2) = T%XYXY; A(1,2,2,1) = T%XYXY; A(2,1,1,2) = T%XYXY; A(2,1,2,1) = T%XYXY;
+      !A(1,2,1,2) = T%XZXZ; A(1,2,2,1) = T%XZXZ; A(2,1,1,2) = T%XZXZ; A(2,1,1,2) = T%XZXZ;
       A(1,3,1,2) = T%XZXY; A(1,3,2,1) = T%XZXY; A(3,1,1,2) = T%XZXY; A(3,1,2,1) = T%XZXY;
       A(1,2,1,3) = T%XZXY; A(1,2,3,1) = T%XZXY; A(2,1,1,3) = T%XZXY; A(2,1,3,1) = T%XZXY;
-      A(1,2,1,2) = T%XYXY; A(1,2,2,1) = T%XYXY; A(2,1,1,2) = T%XYXY; A(2,1,2,1) = T%XYXY;
+      A(1,3,1,3) = T%XZXZ; A(1,3,3,1) = T%XZXZ; A(3,1,1,3) = T%XZXZ; A(3,1,3,1) = T%XZXZ;
+      !A(1,2,1,2) = T%XYXY; A(1,2,2,1) = T%XYXY; A(2,1,1,2) = T%XYXY; A(2,1,2,1) = T%XYXY;
    End Subroutine Tens4OS3D2Array4
 
 
@@ -2818,6 +2822,7 @@ Contains
       PetscErrorCode                              :: ierr
 
       TT = T
+      !print *,"TT = ", TT
       MM = M
       C = 0.0_Kr
       Do i = 1,3
@@ -2829,10 +2834,13 @@ Contains
                         Do r = 1,3
                            Do s = 1,3
                               C(i,j,k,l) = C(i,j,k,l) + MM(i,p) * MM(j,q) * MM(k,r) * MM(l,s) * TT(p,q,r,s)
+                              !print *,"    R[",i-1,",",p-1,"] = ",MM(i,p),"    R[",j-1,",",q-1,"] = ",MM(j,q),"    R[",k-1,",",r-1,"] = ",MM(k,r),"    R[",l-1,",",s-1,"] = ",MM(l,s),"    A[",p-1,",",q-1,",",r-1,",",s-1,"] = ",TT(p,q,r,s)
+                              !print *,"    inc: C[",i-1,",",j-1,",",k-1,",",l-1,"] = ", C(i,j,k,l)
                            End Do
                         End Do
                      End Do
                   End Do
+                  !print *,"total: C[",i-1,",",j-1,",",k-1,",",l-1,"] = ", C(i,j,k,l)
                End Do
             End Do
          End Do
