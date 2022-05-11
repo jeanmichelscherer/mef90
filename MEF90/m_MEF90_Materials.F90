@@ -34,6 +34,10 @@ Module m_MEF90_Materials_Types
    End Type MEF90RotationMatrix2D   
    
    Type MEF90RotationMatrix3D
+      ! The Bunge (passive) convention is used. The rotation matrix transforms a vector from the global frame to the local frame.
+      ! - rotation of a vector:              [V_local]_i    = [R]_ij . [V_global]_j
+      ! - rotation of a 2nd order tensor:    [M_local]_ij   = [R]_ik . [M_global]_kl . [R^T]_lj
+      ! - rotation of a fourth order tensor: [C_local]_ijkl = [R]_ip . [R]_jq . [R]_kr . [R]_ls . [C_global]_pqrs 
       Type(MAT3D)        :: fullTensor
       PetscReal          :: phi1,Phi,phi2
       Type(Vect3D)       :: V1,V2,V3
@@ -394,7 +398,7 @@ Contains
          data%RotationMatrix2D%fullTensor%YX = data%RotationMatrix2D%V1%Y / normV1
       End If
       !print *,"stiffness before rotation = ",data%HookesLaw%fullTensorLocal
-      HookesLaw3D = Tens4OSTransform(data%HookesLaw%fullTensorLocal,data%RotationMatrix%fullTensor)
+      HookesLaw3D = Tens4OSTransform(data%HookesLaw%fullTensorLocal,transpose(data%RotationMatrix%fullTensor))
       data%HookesLaw%fullTensor%XXXX = HookesLaw3D%XXXX
       data%HookesLaw%fullTensor%XXYY = HookesLaw3D%XXYY
       data%HookesLaw%fullTensor%XXXY = HookesLaw3D%XXXY
@@ -492,7 +496,7 @@ Contains
          data%RotationMatrix%fullTensor%YZ = data%RotationMatrix%V3%Y / normV3
          data%RotationMatrix%fullTensor%ZZ = data%RotationMatrix%V3%Z / normV3
       End If
-      data%HookesLaw%fullTensor = Tens4OSTransform(data%HookesLaw%fullTensorLocal,data%RotationMatrix%fullTensor)
+      data%HookesLaw%fullTensor = Tens4OSTransform(data%HookesLaw%fullTensorLocal,transpose(data%RotationMatrix%fullTensor))
       !Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1,data%Phi,data%phi2)
       
       ! hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
@@ -744,9 +748,9 @@ Contains
       Select case(matprop%HookesLaw%type)
          Case (MEF90HookesLawTypeFull)
             ! matprop%HookesLaw%fullTensor = default%HookesLaw%fullTensor
-            ! Call PetscBagRegisterRealArray(bag,matprop%HookesLaw%fullTensor,21,'HookesLaw','[N.m^(-2)] (A) Hooke''s law',ierr)
+            ! Call PetscBagRegisterRealArray(bag,matprop%HookesLaw%fullTensor,21,'HookesLaw_tensor','[N.m^(-2)] (A) Hooke''s law',ierr)
             matprop%HookesLaw%fullTensorLocal = default%HookesLaw%fullTensorLocal
-            Call PetscBagRegisterRealArray(bag,matprop%HookesLaw%fullTensorLocal,21,'HookesLaw','[N.m^(-2)] (A) Hooke''s law',ierr)
+            Call PetscBagRegisterRealArray(bag,matprop%HookesLaw%fullTensorLocal,21,'HookesLaw_tensor','[N.m^(-2)] (A) Hooke''s law',ierr)
          Case(MEF90HookesLawTypeIsotropic)
             Call PetscBagRegisterReal(bag,matprop%HookesLaw%YoungsModulus,default%HookesLaw%YoungsModulus,'hookeslaw_YoungsModulus','[N.m^(-2)] (E) Young''s Modulus',ierr)
             Call PetscBagRegisterReal(bag,matprop%HookesLaw%PoissonRatio,default%HookesLaw%PoissonRatio,'hookeslaw_PoissonRatio','[] (nu) Poisson Modulus',ierr)
