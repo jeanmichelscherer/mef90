@@ -7,7 +7,7 @@ Module m_MEF90_Materials_Types
 
    Type MEF90HookesLaw2D
       Type(Tens4OS2D)    :: fullTensor
-      Type(Tens4OS3D)    :: fullTensorLocal
+      Type(Tens4OS3D)    :: fullTensorLocal,fullTensor3D
       PetscReal          :: lambda,mu,YoungsModulus,PoissonRatio,BulkModulus
       PetscEnum          :: type
       PetscBool          :: isPlaneStress
@@ -173,7 +173,13 @@ Module m_MEF90_Materials_Types
                                          1.34615_Kr,0.00000_Kr,0.00000_Kr,0.00000_Kr,  & !                           ZZZZ ZZYZ,ZZXZ,ZZXY
                                                     0.38462_Kr,0.00000_Kr,0.00000_Kr,  & !                                YXYX,YZXZ,YZXY
                                                                0.38462_Kr,0.00000_Kr,  & !                                     XZXZ,XZXY
-                                                                          0.38462_Kr), & !         
+                                                                          0.38462_Kr), & !        
+         Tens4OS3D(1.34615_Kr,0.57692_Kr,0.57692_Kr,0.00000_Kr,0.00000_Kr,0.00000_Kr,  & ! HookesLaw 3D    XXXX,XXYY,XXZZ,XXYZ,XXXZ,XXXY
+                              1.34615_Kr,0.57692_Kr,0.00000_Kr,0.00000_Kr,0.00000_Kr,  & !                      YYYY,YYZZ,YYYZ,YYXZ,YYXY
+                                         1.34615_Kr,0.00000_Kr,0.00000_Kr,0.00000_Kr,  & !                           ZZZZ ZZYZ,ZZXZ,ZZXY
+                                                    0.38462_Kr,0.00000_Kr,0.00000_Kr,  & !                                YXYX,YZXZ,YZXY
+                                                               0.38462_Kr,0.00000_Kr,  & !                                     XZXZ,XZXY
+                                                                          0.38462_Kr), & ! 
          0.0_Kr,0.0_Kr,1.0_Kr,.3_Kr,0.0_Kr,                                            & ! lambda, mu, E, nu, kappa (lambda, mu, kappa will be recomputed)
          MEF90HookesLawTypeIsotropic,                                                  & ! type
          .FALSE.),                                                                     & ! isPlaneStress
@@ -399,6 +405,7 @@ Contains
       End If
       !print *,"stiffness before rotation = ",data%HookesLaw%fullTensorLocal
       HookesLaw3D = Tens4OSTransform(data%HookesLaw%fullTensorLocal,transpose(data%RotationMatrix%fullTensor))
+      data%HookesLaw%fullTensor3D = HookesLaw3D
       data%HookesLaw%fullTensor%XXXX = HookesLaw3D%XXXX
       data%HookesLaw%fullTensor%XXYY = HookesLaw3D%XXYY
       data%HookesLaw%fullTensor%XXXY = HookesLaw3D%XXXY
