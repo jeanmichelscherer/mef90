@@ -2849,13 +2849,13 @@ Contains
       Call PetscLogFlops(flops,ierr);CHKERRQ(ierr)
    End Function Tens4OS3DTransform
 
-   Function Tens4OS3DXTens4OS2D(T1,T2)
+   Function Tens4OS2DXTens4OS2D(T1,T2)
       !!! Compute the double contraction of 4th order tensors
       !!! i.e. C_{ijkl} = T1_{ijpq}:T2_{pqkl}
       !!! (c) 2022 Jean-Michel Scherer scherer@caltech.edu
       Type(Tens4OS2D),Intent(IN)                  :: T1,T2
       
-      Type(Tens4OS2D)                             :: Tens4OS3DXTens4OS2D
+      Type(Tens4OS2D)                             :: Tens4OS2DXTens4OS2D
    
       PetscReal,Dimension(2,2,2,2)                :: TT1,TT2,C
       Integer                                     :: i,j,k,l
@@ -2880,10 +2880,10 @@ Contains
          End Do
       End Do
        
-      Tens4OS3DXTens4OS2D = C
+      Tens4OS2DXTens4OS2D = C
       flops = 192 ! 2**6 * 3
       Call PetscLogFlops(flops,ierr);CHKERRQ(ierr)
-   End Function Tens4OS3DXTens4OS2D
+   End Function Tens4OS2DXTens4OS2D
 
    Function Tens4OS3DXTens4OS3D(T1,T2)
       !!! Compute the double contraction of 4th order tensors
