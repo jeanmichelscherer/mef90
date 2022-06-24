@@ -46,6 +46,7 @@ Module MEF90_APPEND(m_MEF90_DefMechPlasticity,MEF90_DIM)D
       logical(Kind = Kr)          :: isViscousPlasticity
       real(Kind = Kr)             :: ViscosityGamma0
       real(Kind = Kr)             :: ViscosityN
+      real(Kind = Kr)             :: Viscositydt
       real(Kind = Kr)             :: eta, eta_0, eta_m
       real(Kind = Kr)             :: rateIndependentFixedPointResidual
       Type(MATS3D)                :: plasticStrainFlow3D_0, plasticStrainFlow3D_1
@@ -971,7 +972,7 @@ contains
       !!!     slip increment. 
       !!!     The total strain increment could also be useful, to implement a
       !!!     rate-independent model based on Forest and Rubin 2020..
-      dt = 0.01_Kr !myctx_ptr%number_of_iterations !L1SQP !numberOfIterations !iter !0.1
+      dt = myctx_ptr%Viscositydt ! 0.01_Kr !myctx_ptr%number_of_iterations !L1SQP !numberOfIterations !iter !0.1
 
       f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
       Do s = 1,1
@@ -1137,7 +1138,7 @@ contains
       TotalPlasticIncrement        = 0.0_Kr
       myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = 0.0_Kr
 
-      dt = 0.01_Kr
+      dt = myctx_ptr%Viscositydt
       active = 0
 
       f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
@@ -1149,7 +1150,7 @@ contains
          CRSS = myctx_ptr%YieldTau0
          if ( .NOT. (myctx_ptr%YieldQ==0.0_Kr) ) then
             Do k=1,12
-               CRSS = CRSS + myctx_ptr%YieldQ * myctx_ptr%InteractionMatrix%him(s,k) * (1.0_Kr - EXP(-myctx_ptr%Yieldb * ABS(PlasticSlips(k)) ))
+               CRSS = CRSS !+ myctx_ptr%YieldQ * myctx_ptr%InteractionMatrix%him(s,k) * (1.0_Kr - EXP(-myctx_ptr%Yieldb * ABS(PlasticSlips(k)) ))
             end do
          end if
          if (myctx_ptr%isViscousPlasticity) then    
@@ -1158,7 +1159,7 @@ contains
             TotalPlasticIncrementCrystal = TotalPlasticIncrementCrystal + (PlasticSlipIncrement(s) * MatrixMu(s))
             myctx_ptr%plasticSlipsVariation(s) = PlasticSlipIncrement(s)
             myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + ResolvedShearStress(s)*PlasticSlipIncrement(s)
-            ! + ( (CRSS *&
+            !myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + ( (CRSS *&
             !     &  ABS(PlasticSlipIncrement(s))) + (dt * myctx_ptr%YieldTau0 * (myctx_ptr%ViscosityN/(1+myctx_ptr%ViscosityN))*myctx_ptr%ViscosityGamma0*&
             !     & (ABS(PlasticSlipIncrement(s))/(dt*myctx_ptr%ViscosityGamma0))**((myctx_ptr%ViscosityN+1)/myctx_ptr%ViscosityN)))   
          else
@@ -1173,6 +1174,9 @@ contains
          endif
          if ((ABS(StiffnessA*ResolvedShearStress(s)) - StiffnessB*CRSS)>0) then
             active = active + 1
+            !print *,'StiffnessA = ',StiffnessA,'    ','StiffnessB = ',StiffnessB
+            !print *,'CRSS = ',CRSS,'   ', 'taus = ',ResolvedShearStress(s)
+            !print *,'gammas = ',PlasticSlipIncrement(s)
          end if
       End Do
       f(1) = f(1) + StiffnessB * myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
@@ -1184,6 +1188,7 @@ contains
       !print *,PlasticStrainFlow3D%ZZ-TotalPlasticIncrement%ZZ
 #elif MEF90_DIM==3
       h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
+      !print *,'h = ', h(1)
       !print *,h(1)
 #endif
    end subroutine FHG_CRYSTALBCC
@@ -1307,6 +1312,7 @@ contains
          phi = ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0
          sgn = SIGN(1.0_Kr, ResolvedShearStress(s))
          myctx_ptr%plasticSlipsVariation(s) = sgn * x(s)
+         f(1) = f(1) + ResolvedShearStress(s)*(sgn*x(s))
          h(s) = SQRT( (dt*phi)**2 + (sgn*x(s))**2 + ksi**2 ) + (dt*phi) - (sgn*x(s))
          !myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + ResolvedShearStress(s)*(sgn*x(s))
          !print *,"h(s) = ",h(s)
@@ -1431,7 +1437,7 @@ contains
       
       normS = (2.0_Kr*SQRT(6.0_Kr))
       dt = 0.1_Kr
-      ksi = 1.e-5 ! 0.0_Kr
+      ksi = 0.0_Kr !1.e-12 ! 1.e-5 ! 0.0_Kr
       f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS) ! elastic energy
       Do s = 1,12
          m = m_s(:,s) 
@@ -1441,8 +1447,9 @@ contains
          phi = ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*myctx_ptr%YieldTau0
          sgn = SIGN(1.0_Kr, ResolvedShearStress(s))
          myctx_ptr%plasticSlipsVariation(s) = sgn * x(s)
-         !f(s+1) = ResolvedShearStress(s)*(sgn*x(s))
+         f(1) = f(1) + ResolvedShearStress(s)*(sgn*x(s))
          h(s) = SQRT( (dt*phi)**2 + (sgn*x(s))**2 + ksi**2 ) + (dt*phi) - (sgn*x(s))
+         !h(s) = SQRT( (dt*phi)**2 + (sgn*x(s))**2 + 2*(dt*phi)*(sgn*x(s)) + ksi**2 ) + (dt*phi) - (sgn*x(s))
          !myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + ResolvedShearStress(s)*(sgn*x(s))
          !print *,"h(s) = ",h(s)
          !print *,"phi = ", phi
@@ -1553,6 +1560,7 @@ contains
       Call MEF90ISAllGatherMerge(PETSC_COMM_WORLD,CellSetGlobalIS,ierr);CHKERRQ(ierr)
       Call ISGetIndicesF90(CellSetGlobalIS,setID,ierr);CHKERRQ(ierr)
 
+      !print *,'Material Behaviour called'
       Do set = 1,size(setID)
          Call PetscBagGetDataMEF90MatProp(MEF90DefMechCtx%MaterialPropertiesBag(set),matpropSet,ierr);CHKERRQ(ierr)
 
@@ -1827,8 +1835,9 @@ contains
                             PlasticityCtx%rateIndependentFixedPointResidual = 1.
                             PlasticityCtx%plasticStrainFlow3D_0 = 0.0_Kr
                             PlasticityCtx%plasticStrainFlow3D_1 = 0.0_Kr
-                            !print *,"cell: ", cell
-                            do while ((PlasticityCtx%rateIndependentFixedPointResidual > 1.e-9)) ! .AND. (rateIndependentIter < 5))
+                            do while ((PlasticityCtx%rateIndependentFixedPointResidual > 1.e-5) .AND. (rateIndependentIter < 5))
+                               !print *,"rateIndependentIter: ", rateIndependentIter
+                               !print *,"plasticStrainLoc = ", plasticStrainLoc
                                PlasticityCtx%rateIndependentFixedPointResidual = 0.
                                PlasticityCtx%plasticStrainFlow3D_0 = plasticStrainLoc - plasticStrainOldLoc
                                exit_code = SNLPL1SQP(s,plasticStrainLoc)
@@ -1839,13 +1848,17 @@ contains
                                !print *,"cell: ", cell
                                !print *,"PlasticityCtx%rateIndependentFixedPointResidual = ", PlasticityCtx%rateIndependentFixedPointResidual
                             end do
+                            !print *,"rateIndependentIter: ", rateIndependentIter
+                            !print *,"plasticStrainLoc = ", plasticStrainLoc
                         else
                             exit_code = SNLPL1SQP(s,plasticStrainLoc)
                             !exit_code = SNLPLinfSQP(s,plasticStrainLoc)
+                            !print *,"plasticStrainLoc = ", plasticStrainLoc
                         end if    
                      Case (MEF90DefMech_plasticityTypeCrystalSingleSlipGammas,MEF90DefMech_plasticityTypeCrystalBCCGammas)
                         exit_code = SNLPL1SQP(s,plasticSlipsLoc)
                         plasticStrainLoc = PlasticityCtx%PlasticStrain
+                        !print *,"plasticStrainLoc = ", plasticStrainLoc
                      Case default
                         if (cellSetOptions%plasticityType /= MEF90DefMech_plasticityTypeNONE) then
                            exit_code = SNLPL1SQP(s,plasticStrainLoc)

@@ -89,6 +89,7 @@ Module m_MEF90_Materials_Types
       PetscBool                     :: isViscousPlasticity                              ! boolean telling if crystal plasticity is viscous or rate-independent
       PetscReal                     :: ViscosityGamma0                                  ! viscosity reference slip rate
       PetscReal                     :: ViscosityN                                       ! viscosity exponent
+      PetscReal                     :: Viscositydt                                      ! time step size
       PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
       PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient
       Type(MEF90RotationMatrix2D)   :: RotationMatrix2D                                 ! rotation matrix from the global frame to the material frame: X_local = R . X_global
@@ -140,6 +141,7 @@ Module m_MEF90_Materials_Types
       PetscBool                     :: isViscousPlasticity                              ! boolean telling if crystal plasticity is viscous or rate-independent
       PetscReal                     :: ViscosityGamma0                                  ! viscosity reference slip rate
       PetscReal                     :: ViscosityN                                       ! viscosity exponent
+      PetscReal                     :: Viscositydt                                      ! time step size
       PetscReal                     :: eta_0                                            ! initial penalty in the rate-independent crystal plasticity framework (Schmidt-Baldassari, 2003)
       PetscReal                     :: eta_m                                            ! penalty geometric increase coefficient
       Type(MEF90RotationMatrix3D)   :: RotationMatrix                                   ! rotation matrix from the global frame to the material frame: X_local = R . X_global
@@ -215,6 +217,7 @@ Module m_MEF90_Materials_Types
       .FALSE.,                                                                         & ! isViscousPlasticity
       1.0_Kr,                                                                          & ! ViscosityGamma0
       1.0_Kr,                                                                          & ! ViscosityN
+      1.0_Kr,                                                                          & ! Viscositydt
       1.0_Kr,                                                                          & ! eta_0
       10.0_Kr,                                                                         & ! eta_m
       MEF90RotationMatrix2D(MEF90Mat2DIdentity,0.0_Kr,                                 & ! RotationMatrix2D, phi1
@@ -299,6 +302,7 @@ Module m_MEF90_Materials_Types
       .FALSE.,                                                                         & ! isViscousPlasticity
       1.0_Kr,                                                                          & ! ViscosityGamma0
       1.0_Kr,                                                                          & ! ViscosityN
+      1.0_Kr,                                                                          & ! Viscositydt
       1.0_Kr,                                                                          & ! eta_0
       10.0_Kr,                                                                         & ! eta_m
       MEF90RotationMatrix3D(MEF90Mat3DIdentity,0.0_Kr,0.0_Kr,0.0_Kr,                   & ! RotationMatrix, phi1, Phi, phi2,
@@ -685,6 +689,7 @@ Contains
       Call PetscBagRegisterBool(bag,matprop%isViscousPlasticity,default%isViscousPlasticity,'isViscousPlasticity','[bool] Viscous plastic potential',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%ViscosityGamma0,default%ViscosityGamma0,'ViscosityGamma0','[s^(-1)] Reference plastic deformation rate',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%ViscosityN,default%ViscosityN,'ViscosityN','[unit-less] Viscosity exponent',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%Viscositydt,default%Viscositydt,'Viscositydt','[s] Viscosity time step size',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_0,default%eta_0,'eta_0','[s^(-1)] Reference penalty (similar to a plastic deformation rate)',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_m,default%eta_m,'eta_m','[unit-less] Geometric sequence quotient of rate independent model',ierr);CHKERRQ(ierr)
 
@@ -800,6 +805,7 @@ Contains
       Call PetscBagRegisterBool(bag,matprop%isViscousPlasticity,default%isViscousPlasticity,'isViscousPlasticity','[bool] Viscous plastic potential',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%ViscosityGamma0,default%ViscosityGamma0,'ViscosityGamma0','[s^(-1)] Reference plastic deformation rate',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%ViscosityN,default%ViscosityN,'ViscosityN','[unit-less] Viscosity exponent',ierr);CHKERRQ(ierr)
+      Call PetscBagRegisterReal(bag,matprop%Viscositydt,default%Viscositydt,'Viscositydt','[s] Viscosity time step size',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_0,default%eta_0,'eta_0','[s^(-1)] Reference penalty (similar to a plastic deformation rate)',ierr);CHKERRQ(ierr)
       Call PetscBagRegisterReal(bag,matprop%eta_m,default%eta_m,'eta_m','[unit-less] Geometric sequence quotient of rate independent model',ierr);CHKERRQ(ierr)
       
