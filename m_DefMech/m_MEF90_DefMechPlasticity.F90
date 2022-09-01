@@ -369,7 +369,12 @@ contains
 #if MEF90_DIM == 2
                   if (PlasticityCtx%isPlaneStress .eqv. .FALSE.) then
                      Sigma_33_PlaneStrain = (PlasticityCtx%HookesLaw%YoungsModulus - 2.0_Kr*PlasticityCtx%HookesLaw%PoissonRatio*PlasticityCtx%HookesLaw%mu)*trace(PlasticStrainMatS) + PlasticityCtx%HookesLaw%lambda*trace(PlasticityCtx%InelasticStrain)
-                     cumulatedDissipatedPlasticEnergyVariationLoc(1) = cumulatedDissipatedPlasticEnergyVariationLoc(1) + Stiffness * ( PlasticityCtx%HookesLaw%lambda *trace(PlasticStrainMatS) - Sigma_33_PlaneStrain ) * trace( PlasticStrainMatS - PlasticityCtx%plasticStrainOld )
+                     !cumulatedDissipatedPlasticEnergyVariationLoc(1) = cumulatedDissipatedPlasticEnergyVariationLoc(1) + Stiffness * ( PlasticityCtx%HookesLaw%lambda *trace(PlasticStrainMatS) - Sigma_33_PlaneStrain ) * trace( PlasticStrainMatS - PlasticityCtx%plasticStrainOld )
+                     !if (abs((Stiffness * ( PlasticityCtx%HookesLaw%lambda*trace(PlasticStrainMatS) - Sigma_33_PlaneStrain ) * trace( PlasticStrainMatS -PlasticityCtx%plasticStrainOld ))) > 1.e-5 ) then
+                     !   print *,"sig33 dissip = ", Stiffness * (PlasticityCtx%HookesLaw%lambda *trace(PlasticStrainMatS) - Sigma_33_PlaneStrain) * trace( PlasticStrainMatS - PlasticityCtx%plasticStrainOld )
+                     !   print *,"trace( PlasticStrainMatS - PlasticityCtx%plasticStrainOld ) = ", trace( PlasticStrainMatS - PlasticityCtx%plasticStrainOld )
+                     !   print *,"( PlasticityCtx%HookesLaw%lambda*trace(PlasticStrainMatS) - Sigma_33_PlaneStrain ) = ", ( PlasticityCtx%HookesLaw%lambda *trace(PlasticStrainMatS) - Sigma_33_PlaneStrain )
+                     !end if
                   endif
 #endif
 

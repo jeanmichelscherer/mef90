@@ -74,7 +74,7 @@ Contains
       endif
       
       PlasticStrainFlow = xMatS-myctx_ptr%PlasticStrainOld
-      Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS))
+      !Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS))
 
 #if MEF90_DIM==2
       !!! If plane strain
@@ -94,22 +94,54 @@ Contains
       PlasticStrainFlow3D%XY = xMatS%XY - myctx_ptr%PlasticStrainOld%XY
       PlasticStrainFlow3D%ZZ = -( PlasticStrainFlow3D%XX + PlasticStrainFlow3D%YY )
 
-      Stress3D     = 0.0_Kr
-      Stress3D%XX  = Stress%XX
-      Stress3D%XY  = Stress%XY
-      Stress3D%YY  = Stress%YY
-      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
+      !Stress3D     = 0.0_Kr
+      !Stress3D%XX  = Stress%XX
+      !Stress3D%XY  = Stress%XY
+      !Stress3D%YY  = Stress%YY
+      !Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
       
       PlasticStrain3D = 0.0_Kr
       PlasticStrain3D%XX = xMatS%XX
       PlasticStrain3D%YY = xMatS%YY
       PlasticStrain3D%XY = xMatS%XY
       PlasticStrain3D%ZZ = -(PlasticStrain3D%XX + PlasticStrain3D%YY)
+
+      Select case(myctx_ptr%HookesLaw%type)
+         Case(MEF90HookesLawTypeIsotropic)
+            !Stress3D     = 0.0_Kr
+            !Stress3D%XX  = Stress%XX
+            !Stress3D%XY  = Stress%XY
+            !Stress3D%YY  = Stress%YY
+            !Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
+            !print *, "Stress3D%ZZ = ", Stress3D%ZZ
+            Stress3D    = 0.0_Kr
+            Stress3D%XX = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%XX-xMatS%XX)
+            Stress3D%YY = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%YY-xMatS%YY)
+            Stress3D%XY = 2*mu*(Strain3D%XY-xMatS%XY)
+            Stress3D%ZZ = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
+            !print *, "Stress3D%ZZ = ", Stress3D%ZZ
+         Case(MEF90HookesLawTypeFull)
+            !mu = myctx_ptr%HookesLaw%fullTensor3D%XZXZ
+            !lambda = myctx_ptr%HookesLaw%fullTensor3D%XXYY
+            !Stress3D     = 0.0_Kr
+            !Stress3D%XX  = Stress%XX
+            !Stress3D%XY  = Stress%XY
+            !Stress3D%YY  = Stress%YY
+            Stress3D    = myctx_ptr%HookesLaw%fullTensor3D*(Strain3D-PlasticStrain3D)
+            !Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
+            !Stress3D     = (myctx_ptr%HookesLaw%fullTensor3D*(Strain3D-PlasticStrain3D))
+            !print *, "Stress3D%ZZ = ", Stress3D%ZZ
+            !print *, "Stress3D%XX - Stress%XX = ", Stress3D%XX - (lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%XX-xMatS%XX))
+            !print *, "Stress3D%YY - Stress%YY = ", Stress3D%YY - (lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%YY-xMatS%YY))
+            !print *, "Stress3D%XY - Stress%XY = ", Stress3D%XY - (2*mu*(Strain3D%XY-xMatS%XY))
+            !print *, "(myctx_ptr%InelasticStrain-xMatS) = ", (myctx_ptr%InelasticStrain-xMatS)
+            !print *, "(Strain3D-PlasticStrain3D) = ", (Strain3D-PlasticStrain3D)
+      End Select
 #elif MEF90_DIM==3
-      Stress3D             = Stress
       Strain3D             = myctx_ptr%InelasticStrain
       PlasticStrainFlow3D  = xMatS - myctx_ptr%PlasticStrainOld
       PlasticStrain3D      = xMatS
+      Stress3D             = myctx_ptr%HookesLaw*(Strain3D-PlasticStrain3D) !Stress
 #endif
       
       Stress3DCrystal = MatRaRt(Stress3D,myctx_ptr%RotationMatrix3D%fullTensor)
@@ -157,7 +189,8 @@ Contains
          end if
       End Do
       if (myctx_ptr%isViscousPlasticity) then
-         f(1) = (0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS)) + (StiffnessB * myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation)
+         !f(1) = (0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS)) + (StiffnessB * myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation)
+         f(1) =  (StiffnessB * myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation)
          TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
 #if MEF90_DIM==2
          h(1) = PlasticStrainFlow3D%XX - TotalPlasticIncrement%XX
