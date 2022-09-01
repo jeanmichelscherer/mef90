@@ -423,27 +423,30 @@ Contains
       !print *,"rotation matrix = ",data%RotationMatrix%fullTensor
       !print *,"stiffness after rotation = ",data%HookesLaw%fullTensor
       ! Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1)
-      
-      h1=data%InteractionMatrix%h1
-      h2=data%InteractionMatrix%h2
-      h3=data%InteractionMatrix%h3
-      h4=data%InteractionMatrix%h4
-      h5=data%InteractionMatrix%h5
-      h6=data%InteractionMatrix%h6
-      h7=data%InteractionMatrix%h7
+
+      ! Based on Madec and Kubin, 2017 (https://doi.org/10.1016/j.actamat.2016.12.040)
+      h1=data%InteractionMatrix%h1 ! hSelf
+      h2=data%InteractionMatrix%h2 ! hCoplanar
+      h3=data%InteractionMatrix%h3 ! hHirth
+      h4=data%InteractionMatrix%h4 ! hLomer
+      h5=data%InteractionMatrix%h5 ! hColinear
+      h6=data%InteractionMatrix%h6 ! hGlissile0
+      h7=data%InteractionMatrix%h7 ! hGlissile60   
       data%InteractionMatrix%him = &
-      reshape((/ h1, h2, h2, h5, h6, h6, h6, h4, h3, h6, h3, h4, &
-                 h2, h1, h2, h6, h3, h4, h5, h6, h6, h6, h4, h3, &
-                 h2, h2, h1, h6, h4, h3, h6, h3, h4, h5, h6, h6, &
-                 h5, h6, h6, h1, h2, h2, h4, h6, h3, h4, h3, h6, &
-                 h6, h3, h4, h2, h1, h2, h3, h6, h4, h6, h6, h5, &
-                 h6, h4, h3, h2, h2, h1, h6, h5, h6, h3, h4, h6, &
-                 h6, h5, h6, h4, h3, h6, h1, h2, h2, h4, h6, h3, &
-                 h4, h6, h3, h6, h6, h5, h2, h1, h2, h3, h6, h4, &
-                 h3, h6, h4, h3, h4, h6, h2, h2, h1, h6, h5, h6, &
-                 h6, h6, h5, h4, h6, h3, h4, h3, h6, h1, h2, h2, &
-                 h3, h4, h6, h3, h6, h4, h6, h6, h5, h2, h1, h2, &
-                 h4, h3, h6, h6, h5, h6, h3, h4, h6, h2, h2, h1 /), (/12,12/))   
+             !!! Bd,B4  Ba,B2  Bc,B5  Db,D4  Dc,D1  Da,D6  Ab,A2  Ad,A6  Ac,A3  Cb,C5  Ca,C3  Cd,C1
+      reshape((/ h1,    h2,    h2,    h5,    h7,    h7,    h6,    h4,    h3,    h6,    h3,    h4, & ! Bd,B4
+                 h2,    h1,    h2,    h6,    h3,    h4,    h5,    h7,    h7,    h6,    h4,    h3, & ! Ba,B2
+                 h2,    h2,    h1,    h6,    h4,    h3,    h6,    h3,    h4,    h5,    h7,    h7, & ! Bc,B5
+                 h5,    h7,    h7,    h1,    h2,    h2,    h4,    h6,    h3,    h4,    h3,    h6, & ! Db,D4
+                 h6,    h3,    h4,    h2,    h1,    h2,    h3,    h6,    h4,    h7,    h7,    h5, & ! Dc,D1
+                 h6,    h4,    h3,    h2,    h2,    h1,    h7,    h5,    h7,    h3,    h4,    h6, & ! Da,D6
+                 h7,    h5,    h7,    h4,    h3,    h6,    h1,    h2,    h2,    h4,    h6,    h3, & ! Ab,A2
+                 h4,    h6,    h3,    h7,    h7,    h5,    h2,    h1,    h2,    h3,    h6,    h4, & ! Ad,A6
+                 h3,    h6,    h4,    h3,    h4,    h6,    h2,    h2,    h1,    h7,    h5,    h7, & ! Ac,A3
+                 h7,    h7,    h5,    h4,    h6,    h3,    h4,    h3,    h6,    h1,    h2,    h2, & ! Cb,C5
+                 h3,    h4,    h6,    h3,    h6,    h4,    h7,    h7,    h5,    h2,    h1,    h2, & ! Ca,C3
+                 h4,    h3,    h6,    h7,    h5,    h7,    h3,    h4,    h6,    h2,    h2,    h1  & ! Cd,C1
+               /), (/12,12/))   
    End Subroutine PetscBagGetDataMEF90MatProp2D
 End Module m_MEF90_Materials_Interface2D
 
@@ -510,27 +513,29 @@ Contains
       data%HookesLaw%fullTensor = Tens4OSTransform(data%HookesLaw%fullTensorLocal,transpose(data%RotationMatrix%fullTensor))
       !Call MEF90RotationMatrixphi12D(data%RotationMatrix,data%phi1,data%Phi,data%phi2)
       
-      ! hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
-      h1=data%InteractionMatrix%h1
-      h2=data%InteractionMatrix%h2
-      h3=data%InteractionMatrix%h3
-      h4=data%InteractionMatrix%h4
-      h5=data%InteractionMatrix%h5
-      h6=data%InteractionMatrix%h6
-      h7=data%InteractionMatrix%h7      
+      ! Based on Madec and Kubin, 2017 (https://doi.org/10.1016/j.actamat.2016.12.040)
+      h1=data%InteractionMatrix%h1 ! hSelf
+      h2=data%InteractionMatrix%h2 ! hCoplanar
+      h3=data%InteractionMatrix%h3 ! hHirth
+      h4=data%InteractionMatrix%h4 ! hLomer
+      h5=data%InteractionMatrix%h5 ! hColinear
+      h6=data%InteractionMatrix%h6 ! hGlissile0
+      h7=data%InteractionMatrix%h7 ! hGlissile60 
       data%InteractionMatrix%him = &
-      reshape((/ h1, h2, h2, h5, h6, h6, h6, h4, h3, h6, h3, h4, &
-                 h2, h1, h2, h6, h3, h4, h5, h6, h6, h6, h4, h3, &
-                 h2, h2, h1, h6, h4, h3, h6, h3, h4, h5, h6, h6, &
-                 h5, h6, h6, h1, h2, h2, h4, h6, h3, h4, h3, h6, &
-                 h6, h3, h4, h2, h1, h2, h3, h6, h4, h6, h6, h5, &
-                 h6, h4, h3, h2, h2, h1, h6, h5, h6, h3, h4, h6, &
-                 h6, h5, h6, h4, h3, h6, h1, h2, h2, h4, h6, h3, &
-                 h4, h6, h3, h6, h6, h5, h2, h1, h2, h3, h6, h4, &
-                 h3, h6, h4, h3, h4, h6, h2, h2, h1, h6, h5, h6, &
-                 h6, h6, h5, h4, h6, h3, h4, h3, h6, h1, h2, h2, &
-                 h3, h4, h6, h3, h6, h4, h6, h6, h5, h2, h1, h2, &
-                 h4, h3, h6, h6, h5, h6, h3, h4, h6, h2, h2, h1 /), (/12,12/)) 
+             !!! Bd,B4  Ba,B2  Bc,B5  Db,D4  Dc,D1  Da,D6  Ab,A2  Ad,A6  Ac,A3  Cb,C5  Ca,C3  Cd,C1
+      reshape((/ h1,    h2,    h2,    h5,    h7,    h7,    h6,    h4,    h3,    h6,    h3,    h4, & ! Bd,B4
+                 h2,    h1,    h2,    h6,    h3,    h4,    h5,    h7,    h7,    h6,    h4,    h3, & ! Ba,B2
+                 h2,    h2,    h1,    h6,    h4,    h3,    h6,    h3,    h4,    h5,    h7,    h7, & ! Bc,B5
+                 h5,    h7,    h7,    h1,    h2,    h2,    h4,    h6,    h3,    h4,    h3,    h6, & ! Db,D4
+                 h6,    h3,    h4,    h2,    h1,    h2,    h3,    h6,    h4,    h7,    h7,    h5, & ! Dc,D1
+                 h6,    h4,    h3,    h2,    h2,    h1,    h7,    h5,    h7,    h3,    h4,    h6, & ! Da,D6
+                 h7,    h5,    h7,    h4,    h3,    h6,    h1,    h2,    h2,    h4,    h6,    h3, & ! Ab,A2
+                 h4,    h6,    h3,    h7,    h7,    h5,    h2,    h1,    h2,    h3,    h6,    h4, & ! Ad,A6
+                 h3,    h6,    h4,    h3,    h4,    h6,    h2,    h2,    h1,    h7,    h5,    h7, & ! Ac,A3
+                 h7,    h7,    h5,    h4,    h6,    h3,    h4,    h3,    h6,    h1,    h2,    h2, & ! Cb,C5
+                 h3,    h4,    h6,    h3,    h6,    h4,    h7,    h7,    h5,    h2,    h1,    h2, & ! Ca,C3
+                 h4,    h3,    h6,    h7,    h5,    h7,    h3,    h4,    h6,    h2,    h2,    h1  & ! Cd,C1
+               /), (/12,12/))   
    End Subroutine PetscBagGetDataMEF90MatProp3D
 End Module m_MEF90_Materials_Interface3D
 
