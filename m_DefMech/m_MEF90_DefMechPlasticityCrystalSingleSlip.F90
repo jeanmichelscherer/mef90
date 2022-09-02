@@ -33,8 +33,8 @@ Contains
       type(c_ptr),intent(in),value              :: myctx
       type(MEF90DefMechPlasticityCtx),pointer   :: myctx_ptr
       type(MEF90_MATS)                          :: xMatS
-      type(MEF90_MATS)                          :: InelasticStrain, PlasticStrainFlow, Stress
-      type(MatS3D)                              :: Strain3D, PlasticStrainFlow3D, Stress3D, Stress3DCrystal, MatrixMu, TotalPlasticIncrement, TotalPlasticIncrementCrystal
+      type(MEF90_MATS)                          :: InelasticStrain
+      type(MatS3D)                              :: Strain3D, PlasticStrain3D, PlasticStrainFlow3D, Stress3D, Stress3DCrystal, MatrixMu, TotalPlasticIncrement, TotalPlasticIncrementCrystal
       type(MAT3D)                               :: MatrixR
       real(Kind = Kr),dimension(1)              :: ResolvedShearStress,PlasticSlipIncrement 
       integer(Kind = Kr)                        :: s
@@ -65,9 +65,6 @@ Contains
          StiffnessB = ( (1.0_Kr-myctx_ptr%residualYieldStress)*StiffnessB + myctx_ptr%residualYieldStress )
       endif
 
-      PlasticStrainFlow = xMatS-myctx_ptr%PlasticStrainOld
-      Stress = (myctx_ptr%HookesLaw*(myctx_ptr%InelasticStrain-xMatS)) !*StiffnessA
-
 #if MEF90_DIM==2
       !!! If plane strain
       E      = myctx_ptr%HookesLaw%YoungsModulus
@@ -86,15 +83,27 @@ Contains
       PlasticStrainFlow3D%XY = xMatS%XY - myctx_ptr%PlasticStrainOld%XY
       PlasticStrainFlow3D%ZZ = -( PlasticStrainFlow3D%XX + PlasticStrainFlow3D%YY )
 
-      Stress3D     = 0.0_Kr
-      Stress3D%XX  = Stress%XX
-      Stress3D%XY  = Stress%XY
-      Stress3D%YY  = Stress%YY
-      Stress3D%ZZ  = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
+      PlasticStrain3D = 0.0_Kr
+      PlasticStrain3D%XX = xMatS%XX
+      PlasticStrain3D%YY = xMatS%YY
+      PlasticStrain3D%XY = xMatS%XY
+      PlasticStrain3D%ZZ = -(PlasticStrain3D%XX + PlasticStrain3D%YY)
+
+      Select case(myctx_ptr%HookesLaw%type)
+         Case(MEF90HookesLawTypeIsotropic)
+            Stress3D    = 0.0_Kr
+            Stress3D%XX = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%XX-xMatS%XX)
+            Stress3D%YY = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%YY-xMatS%YY)
+            Stress3D%XY = 2*mu*(Strain3D%XY-xMatS%XY)
+            Stress3D%ZZ = lambda*(Trace(Strain3D)) + 2*mu*(Strain3D%ZZ+Trace(xMatS))
+         Case(MEF90HookesLawTypeFull)
+            Stress3D    = myctx_ptr%HookesLaw%fullTensor3D*(Strain3D-PlasticStrain3D)
+      End Select
 #elif MEF90_DIM==3
-      Stress3D             = Stress
       Strain3D             = myctx_ptr%InelasticStrain
       PlasticStrainFlow3D  = xMatS - myctx_ptr%PlasticStrainOld
+      PlasticStrain3D      = xMatS
+      Stress3D = myctx_ptr%HookesLaw*(Strain3D-PlasticStrain3D)
 #endif
 
       Stress3DCrystal = MatRaRt(Stress3D,myctx_ptr%RotationMatrix3D%fullTensor)
@@ -107,7 +116,6 @@ Contains
       
       dt = myctx_ptr%Viscositydt 
 
-      f(1) = 0.5_Kr * StiffnessA * Stress .DotP. (myctx_ptr%InelasticStrain-xMatS)
       Do s = 1,1
          m = m_s(:,s) 
          n = n_s(:,s) 
@@ -127,7 +135,7 @@ Contains
             !myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation = myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation + ResolvedShearStress(s)*PlasticSlipIncrement(s)
          endif 
       End Do
-      f(1) = f(1) + StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
+      f(1) = StiffnessB*myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation
       TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
 #if MEF90_DIM==2
       h(1) = PlasticStrainFlow3D%XX - TotalPlasticIncrement%XX
