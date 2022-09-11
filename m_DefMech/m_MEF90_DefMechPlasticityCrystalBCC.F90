@@ -160,6 +160,7 @@ Contains
       End Do
       if (myctx_ptr%isViscousPlasticity) then
          f(1) = (StiffnessB * myctx_ptr%viscouscumulatedDissipatedPlasticEnergyVariation)
+         TotalPlasticIncrement = MatRtaR(TotalPlasticIncrementCrystal,myctx_ptr%RotationMatrix3D%fullTensor)
 #if MEF90_DIM==2
          h(1) = PlasticStrainFlow3D%XX - TotalPlasticIncrement%XX
          h(2) = PlasticStrainFlow3D%XY - TotalPlasticIncrement%XY
