@@ -43,6 +43,8 @@ type :: MEF90DefMechPlasticityCtx
    real(Kind = Kr)             :: Viscositydt
    real(Kind = Kr)             :: viscousCumulatedDissipatedPlasticEnergyVariation
    real(Kind = Kr)             :: m
+   real(Kind = Kr)             :: YieldQ,Yieldb
+   Type(MEF90InteractionMatrix):: InteractionMatrix
 end type MEF90DefMechPlasticityCtx
 
 End Module MEF90_APPEND(m_MEF90_DefMechPlasticityCtx,MEF90_DIM)D

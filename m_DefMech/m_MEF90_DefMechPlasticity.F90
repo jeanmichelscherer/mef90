@@ -287,6 +287,9 @@ contains
                PlasticityCtx%ViscosityN = matpropSet%ViscosityN
                PlasticityCtx%Viscositydt = matpropSet%Viscositydt
                PlasticityCtx%m = matpropSet%m
+               PlasticityCtx%YieldQ = matpropSet%YieldQ
+               PlasticityCtx%Yieldb = matpropSet%Yieldb
+               PlasticityCtx%InteractionMatrix = matpropSet%InteractionMatrix
 
 
 #if MEF90_DIM == 2

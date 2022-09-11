@@ -124,10 +124,10 @@ Contains
          MatrixMu(s) = ((m .TensP. n) + (n .TensP. m)) / normS
       end do
        
-      !if ( .NOT. (myctx_ptr%YieldQ==0.0_Kr) ) then
-      !   PlasticStrain3DCrystal = MatRaRt(PlasticStrain3D,myctx_ptr%RotationMatrix3D%fullTensor)         
-      !   PlasticSlips(s) = PlasticStrain3DCrystal .DotP. MatrixMu(s)
-      !end if
+      if ( .NOT. (myctx_ptr%YieldQ==0.0_Kr) ) then
+         PlasticStrain3DCrystal = MatRaRt(PlasticStrain3D,myctx_ptr%RotationMatrix3D%fullTensor)         
+         PlasticSlips(s) = PlasticStrain3DCrystal .DotP. MatrixMu(s)
+      end if
 
       TotalPlasticIncrementCrystal = 0.0_Kr
       TotalPlasticIncrement        = 0.0_Kr
@@ -139,11 +139,11 @@ Contains
       Do s = 1,12
          ResolvedShearStress(s) =  Stress3DCrystal .DotP. MatrixMu(s)
          CRSS = myctx_ptr%YieldTau0
-         !if ( .NOT. (myctx_ptr%YieldQ==0.0_Kr) ) then
-         !   Do k=1,12
-         !      CRSS = CRSS + myctx_ptr%YieldQ * myctx_ptr%InteractionMatrix%him(s,k) * (1.0_Kr - EXP(-myctx_ptr%Yieldb * ABS(PlasticSlips(k)) ))
-         !   end do
-         !end if
+         if ( .NOT. (myctx_ptr%YieldQ==0.0_Kr) ) then
+            Do k=1,12
+               CRSS = CRSS + myctx_ptr%YieldQ * myctx_ptr%InteractionMatrix%him(s,k) * (1.0_Kr - EXP(-myctx_ptr%Yieldb * ABS(PlasticSlips(k)) ))
+            end do
+         end if
          if (myctx_ptr%isViscousPlasticity) then    
             PlasticSlipIncrement(s) = dt * myctx_ptr%ViscosityGamma0 * SIGN(1.0_Kr, ResolvedShearStress(s)) *&
                                     & MAX( (ABS(StiffnessA*ResolvedShearStress(s)) -  StiffnessB*CRSS) / myctx_ptr%YieldTau0 , 0. )**myctx_ptr%ViscosityN
