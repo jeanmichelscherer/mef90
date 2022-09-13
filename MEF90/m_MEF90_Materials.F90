@@ -396,7 +396,7 @@ Contains
       h3=data%InteractionMatrix%h3 ! hHirth
       h4=data%InteractionMatrix%h4 ! hLomer
       h5=data%InteractionMatrix%h5 ! hColinear
-      h6=data%InteractionMatrix%h6 !  
+      h6=data%InteractionMatrix%h6 ! hGlissile0
       h7=data%InteractionMatrix%h7 ! hGlissile60   
       data%InteractionMatrix%him = &
              !!! Bd,B4  Ba,B2  Bc,B5  Db,D4  Dc,D1  Da,D6  Ab,A2  Ad,A6  Ac,A3  Cb,C5  Ca,C3  Cd,C1
@@ -721,7 +721,7 @@ Contains
             matprop%HookesLaw%fullTensorLocal = default%HookesLaw%fullTensorLocal
             Call PetscBagRegisterRealArray(bag,matprop%HookesLaw%fullTensorLocal,21,'HookesLaw_tensor','[N.m^(-2)] (A) Hooke''s law in the local frame',ierr)
          Case(MEF90HookesLawTypeIsotropic)
-            Call PetscBagRegisterReal(bag,matprop%HookesLaw%YoungsMod/home/scherer/HPC/mef90dev/bin/JIntegral2Dx2017.pyulus,default%HookesLaw%YoungsModulus,'hookeslaw_YoungsModulus','[N.m^(-2)] (E) Young''s Modulus',ierr)
+            Call PetscBagRegisterReal(bag,matprop%HookesLaw%YoungsModulus,default%HookesLaw%YoungsModulus,'hookeslaw_YoungsModulus','[N.m^(-2)] (E) Young''s Modulus',ierr)
             Call PetscBagRegisterReal(bag,matprop%HookesLaw%PoissonRatio,default%HookesLaw%PoissonRatio,'hookeslaw_PoissonRatio','[] (nu) Poisson Modulus',ierr)
             matprop%HookesLaw%fulltensor = -1.D+30
       End Select
