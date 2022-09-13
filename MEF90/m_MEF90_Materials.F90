@@ -37,6 +37,11 @@ Module m_MEF90_Materials_Types
       PetscBool          :: fromEuler
    End Type MEF90RotationMatrix3D
 
+   Type MEF90InteractionMatrix
+      PetscReal,dimension(12,12)    :: him
+      PetscReal                     :: h1,h2,h3,h4,h5,h6,h7 ! For FCC: hSelf,hCoplanar,hHirth,hLomer,hColinear,hGlissile0,hGlissile60
+   End Type MEF90InteractionMatrix
+
    Type MEF90MatProp2D_Type
       PetscReal                     :: Density                                          ! rho
       PetscReal                     :: FractureToughness                                ! Gc
@@ -80,6 +85,10 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: ViscosityN                                       ! viscosity exponent
       PetscReal                     :: Viscositydt                                      ! time step size
       PetscReal                     :: m                                                ! equivalent stress exponent for rate-independent crystal plasticity
+      Type(MEF90InteractionMatrix)  :: InteractionMatrix                                ! hardening interaction matrix for crystal plasticity
+      PetscReal                     :: YieldQ                                           ! Q term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: LinearHardeningSlope                             ! Linear hardening slope
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp2D_Type
 
@@ -126,6 +135,10 @@ Module m_MEF90_Materials_Types
       PetscReal                     :: ViscosityN                                       ! viscosity exponent
       PetscReal                     :: Viscositydt                                      ! time step size
       PetscReal                     :: m                                                ! equivalent stress exponent for rate-independent crystal plasticity
+      Type(MEF90InteractionMatrix)  :: InteractionMatrix                                ! hardening interaction matrix for crystal plasticity
+      PetscReal                     :: YieldQ                                           ! Q term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: Yieldb                                           ! b term in the exponential hardening R0 + Q(1-exp(-bp))
+      PetscReal                     :: LinearHardeningSlope                             ! Linear hardening slope
       Character(len=MEF90_MXSTRLEN) :: Name
    End Type MEF90MatProp3D_Type
 
@@ -199,6 +212,23 @@ Module m_MEF90_Materials_Types
       1.0_Kr,                                                                          & ! ViscosityN
       1.0_Kr,                                                                          & ! Viscositydt
       1.0_Kr,                                                                          & ! m
+      MEF90InteractionMatrix(                                                          &
+      reshape((/ 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr /), (/12,12/)),                   &
+      1.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr),                               &
+      0.0_Kr,                                                                          & ! YieldQ
+      0.0_Kr,                                                                          & ! Yieldb
+      0.0_Kr,                                                                          & ! LinearHardeningSlope
       "MEF90Mathium2D")
 
    Type(MEF90MatProp3D_Type),Parameter     :: MEF90Mathium3D = MEF90MatProp3D_Type(    &
@@ -264,6 +294,23 @@ Module m_MEF90_Materials_Types
       1.0_Kr,                                                                          & ! ViscosityN
       1.0_Kr,                                                                          & ! Viscositydt
       1.0_Kr,                                                                          & ! m
+      MEF90InteractionMatrix(                                                          &
+      reshape((/ 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr, 0.0_Kr,                                  &
+                 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 0.0_Kr, 1.0_Kr /), (/12,12/)),                   &
+      1.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr,0.0_Kr),                               &
+      0.0_Kr,                                                                          & ! YieldQ
+      0.0_Kr,                                                                          & ! Yieldb
+      0.0_Kr,                                                                          & ! LinearHardeningSlope 
       "MEF90Mathium3D")
 End Module m_MEF90_Materials_Types
 
@@ -292,6 +339,7 @@ Contains
       type(MEF90MatProp2D_Type),pointer       :: data
       PetscErrorCode                          :: ierr
       PetscReal                               :: normV1,normV2,normV3
+      PetscReal                               :: h1,h2,h3,h4,h5,h6,h7
       Type(Tens4OS3D)                         :: HookesLaw3D
 
       Call PetscBagGetData(bag,data,ierr)
@@ -341,6 +389,30 @@ Contains
       data%HookesLaw%fullTensor%YYYY = HookesLaw3D%YYYY
       data%HookesLaw%fullTensor%YYXY = HookesLaw3D%YYXY
       data%HookesLaw%fullTensor%XYXY = HookesLaw3D%XYXY
+
+      ! Based on Madec and Kubin, 2017 (https://doi.org/10.1016/j.actamat.2016.12.040)
+      h1=data%InteractionMatrix%h1 ! hSelf
+      h2=data%InteractionMatrix%h2 ! hCoplanar
+      h3=data%InteractionMatrix%h3 ! hHirth
+      h4=data%InteractionMatrix%h4 ! hLomer
+      h5=data%InteractionMatrix%h5 ! hColinear
+      h6=data%InteractionMatrix%h6 !  
+      h7=data%InteractionMatrix%h7 ! hGlissile60   
+      data%InteractionMatrix%him = &
+             !!! Bd,B4  Ba,B2  Bc,B5  Db,D4  Dc,D1  Da,D6  Ab,A2  Ad,A6  Ac,A3  Cb,C5  Ca,C3  Cd,C1
+      reshape((/ h1,    h2,    h2,    h5,    h7,    h7,    h6,    h4,    h3,    h6,    h3,    h4, & ! Bd,B4
+                 h2,    h1,    h2,    h6,    h3,    h4,    h5,    h7,    h7,    h6,    h4,    h3, & ! Ba,B2
+                 h2,    h2,    h1,    h6,    h4,    h3,    h6,    h3,    h4,    h5,    h7,    h7, & ! Bc,B5
+                 h5,    h7,    h7,    h1,    h2,    h2,    h4,    h6,    h3,    h4,    h3,    h6, & ! Db,D4
+                 h6,    h3,    h4,    h2,    h1,    h2,    h3,    h6,    h4,    h7,    h7,    h5, & ! Dc,D1
+                 h6,    h4,    h3,    h2,    h2,    h1,    h7,    h5,    h7,    h3,    h4,    h6, & ! Da,D6
+                 h7,    h5,    h7,    h4,    h3,    h6,    h1,    h2,    h2,    h4,    h6,    h3, & ! Ab,A2
+                 h4,    h6,    h3,    h7,    h7,    h5,    h2,    h1,    h2,    h3,    h6,    h4, & ! Ad,A6
+                 h3,    h6,    h4,    h3,    h4,    h6,    h2,    h2,    h1,    h7,    h5,    h7, & ! Ac,A3
+                 h7,    h7,    h5,    h4,    h6,    h3,    h4,    h3,    h6,    h1,    h2,    h2, & ! Cb,C5
+                 h3,    h4,    h6,    h3,    h6,    h4,    h7,    h7,    h5,    h2,    h1,    h2, & ! Ca,C3
+                 h4,    h3,    h6,    h7,    h5,    h7,    h3,    h4,    h6,    h2,    h2,    h1  & ! Cd,C1
+               /), (/12,12/))        
    End Subroutine PetscBagGetDataMEF90MatProp2D
 End Module m_MEF90_Materials_Interface2D
 
@@ -369,6 +441,7 @@ Contains
       type(MEF90MatProp3D_Type),pointer       :: data
       PetscErrorCode                          :: ierr
       PetscReal                               :: normV1,normV2,normV3
+      PetscReal :: h1,h2,h3,h4,h5,h6,h7
 
       Call PetscBagGetData(bag,data,ierr)
       Select case(data%HookesLaw%type)
@@ -404,6 +477,30 @@ Contains
          data%RotationMatrix%fullTensor%ZZ = data%RotationMatrix%V3%Z / normV3
       End If
       data%HookesLaw%fullTensor = Tens4OSTransform(data%HookesLaw%fullTensorLocal,transpose(data%RotationMatrix%fullTensor))
+
+      ! Based on Madec and Kubin, 2017 (https://doi.org/10.1016/j.actamat.2016.12.040)
+      h1=data%InteractionMatrix%h1 ! hSelf
+      h2=data%InteractionMatrix%h2 ! hCoplanar
+      h3=data%InteractionMatrix%h3 ! hHirth
+      h4=data%InteractionMatrix%h4 ! hLomer
+      h5=data%InteractionMatrix%h5 ! hColinear
+      h6=data%InteractionMatrix%h6 ! hGlissile0
+      h7=data%InteractionMatrix%h7 ! hGlissile60   
+      data%InteractionMatrix%him = &
+             !!! Bd,B4  Ba,B2  Bc,B5  Db,D4  Dc,D1  Da,D6  Ab,A2  Ad,A6  Ac,A3  Cb,C5  Ca,C3  Cd,C1
+      reshape((/ h1,    h2,    h2,    h5,    h7,    h7,    h6,    h4,    h3,    h6,    h3,    h4, & ! Bd,B4
+                 h2,    h1,    h2,    h6,    h3,    h4,    h5,    h7,    h7,    h6,    h4,    h3, & ! Ba,B2
+                 h2,    h2,    h1,    h6,    h4,    h3,    h6,    h3,    h4,    h5,    h7,    h7, & ! Bc,B5
+                 h5,    h7,    h7,    h1,    h2,    h2,    h4,    h6,    h3,    h4,    h3,    h6, & ! Db,D4
+                 h6,    h3,    h4,    h2,    h1,    h2,    h3,    h6,    h4,    h7,    h7,    h5, & ! Dc,D1
+                 h6,    h4,    h3,    h2,    h2,    h1,    h7,    h5,    h7,    h3,    h4,    h6, & ! Da,D6
+                 h7,    h5,    h7,    h4,    h3,    h6,    h1,    h2,    h2,    h4,    h6,    h3, & ! Ab,A2
+                 h4,    h6,    h3,    h7,    h7,    h5,    h2,    h1,    h2,    h3,    h6,    h4, & ! Ad,A6
+                 h3,    h6,    h4,    h3,    h4,    h6,    h2,    h2,    h1,    h7,    h5,    h7, & ! Ac,A3
+                 h7,    h7,    h5,    h4,    h6,    h3,    h4,    h3,    h6,    h1,    h2,    h2, & ! Cb,C5
+                 h3,    h4,    h6,    h3,    h6,    h4,    h7,    h7,    h5,    h2,    h1,    h2, & ! Ca,C3
+                 h4,    h3,    h6,    h7,    h5,    h7,    h3,    h4,    h6,    h2,    h2,    h1  & ! Cd,C1
+               /), (/12,12/))  
    End Subroutine PetscBagGetDataMEF90MatProp3D
 End Module m_MEF90_Materials_Interface3D
 
@@ -573,6 +670,18 @@ Contains
       Call PetscBagRegisterReal(bag,matprop%Viscositydt,default%Viscositydt,'Viscositydt','[s] Viscosity time step size',ierr);CHKERRQ(ierr)
 
       Call PetscBagRegisterReal(bag,matprop%m,default%m,'m','[unit-less] Equivalent stress exponent for rate-independent crystal plasticity',ierr);CHKERRQ(ierr)
+
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h1,default%InteractionMatrix%h1,'InteractionMatrix_1','[] (h1) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h2,'InteractionMatrix_2','[] (h2) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h3,'InteractionMatrix_3','[] (h3) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h3,default%InteractionMatrix%h4,'InteractionMatrix_4','[] (h4) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h4,default%InteractionMatrix%h5,'InteractionMatrix_5','[] (h5) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h5,default%InteractionMatrix%h6,'InteractionMatrix_6','[] (h6) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h6,default%InteractionMatrix%h7,'InteractionMatrix_7','[] (h7) hardening interaction',ierr)
+
+      Call PetscBagRegisterReal(bag,matprop%YieldQ,default%YieldQ,'YieldQ','[N.m^(-2)] (Q) Exponential hardening R0 + Q(1-exp(-bp)) ',ierr)
+      Call PetscBagRegisterReal(bag,matprop%Yieldb,default%Yieldb,'Yieldb','[] (b) Exponential hardening R0 + Q(1-exp(-bp))',ierr)
+
       !Call PetscBagSetFromOptions(bag,ierr)
    End Subroutine PetscBagRegisterMEF90MatProp2D
 
@@ -612,7 +721,7 @@ Contains
             matprop%HookesLaw%fullTensorLocal = default%HookesLaw%fullTensorLocal
             Call PetscBagRegisterRealArray(bag,matprop%HookesLaw%fullTensorLocal,21,'HookesLaw_tensor','[N.m^(-2)] (A) Hooke''s law in the local frame',ierr)
          Case(MEF90HookesLawTypeIsotropic)
-            Call PetscBagRegisterReal(bag,matprop%HookesLaw%YoungsModulus,default%HookesLaw%YoungsModulus,'hookeslaw_YoungsModulus','[N.m^(-2)] (E) Young''s Modulus',ierr)
+            Call PetscBagRegisterReal(bag,matprop%HookesLaw%YoungsMod/home/scherer/HPC/mef90dev/bin/JIntegral2Dx2017.pyulus,default%HookesLaw%YoungsModulus,'hookeslaw_YoungsModulus','[N.m^(-2)] (E) Young''s Modulus',ierr)
             Call PetscBagRegisterReal(bag,matprop%HookesLaw%PoissonRatio,default%HookesLaw%PoissonRatio,'hookeslaw_PoissonRatio','[] (nu) Poisson Modulus',ierr)
             matprop%HookesLaw%fulltensor = -1.D+30
       End Select
@@ -665,6 +774,18 @@ Contains
       Call PetscBagRegisterReal(bag,matprop%Viscositydt,default%Viscositydt,'Viscositydt','[s] Viscosity time step size',ierr);CHKERRQ(ierr)
 
       Call PetscBagRegisterReal(bag,matprop%m,default%m,'m','[unit-less] Equivalent stress exponent for rate-independent crystal plasticity',ierr);CHKERRQ(ierr)
+
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h1,default%InteractionMatrix%h1,'InteractionMatrix_1','[] (h1) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h2,'InteractionMatrix_2','[] (h2) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h2,default%InteractionMatrix%h3,'InteractionMatrix_3','[] (h3) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h3,default%InteractionMatrix%h4,'InteractionMatrix_4','[] (h4) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h4,default%InteractionMatrix%h5,'InteractionMatrix_5','[] (h5) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h5,default%InteractionMatrix%h6,'InteractionMatrix_6','[] (h6) hardening interaction',ierr)
+      Call PetscBagRegisterReal(bag,matprop%InteractionMatrix%h6,default%InteractionMatrix%h7,'InteractionMatrix_7','[] (h7) hardening interaction',ierr)
+
+      Call PetscBagRegisterReal(bag,matprop%YieldQ,default%YieldQ,'YieldQ','[N.m^(-2)] (Q) Exponential hardening R0 + Q(1-exp(-bp)) ',ierr)
+      Call PetscBagRegisterReal(bag,matprop%Yieldb,default%Yieldb,'Yieldb','[] (b) Exponential hardening R0 + Q(1-exp(-bp))',ierr)
+
       !Call PetscBagSetFromOptions(bag,ierr)
    End Subroutine PetscBagRegisterMEF90MatProp3D
 
