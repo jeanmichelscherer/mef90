@@ -142,7 +142,12 @@ Contains
       h(2) = PlasticStrainFlow3D%XY - TotalPlasticIncrement%XY
       h(3) = PlasticStrainFlow3D%YY - TotalPlasticIncrement%YY
 #elif MEF90_DIM==3
-      h(1) = NORM(PlasticStrainFlow3D - TotalPlasticIncrement)
+      h(1) = PlasticStrainFlow3D%XX - TotalPlasticIncrement%XX
+      h(2) = PlasticStrainFlow3D%YY - TotalPlasticIncrement%YY
+      h(3) = PlasticStrainFlow3D%ZZ - TotalPlasticIncrement%ZZ
+      h(4) = PlasticStrainFlow3D%XY - TotalPlasticIncrement%XY
+      h(5) = PlasticStrainFlow3D%XZ - TotalPlasticIncrement%XZ
+      h(6) = PlasticStrainFlow3D%YZ - TotalPlasticIncrement%YZ
 #endif
    end subroutine FHG_CRYSTALSINGLESLIP
 

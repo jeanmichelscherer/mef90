@@ -217,7 +217,7 @@ contains
                      end if
                      snlp_m    = 3
 #elif MEF90_DIM==3
-                     snlp_m    = 1
+                     snlp_m    = 6
 #endif
                      if (matpropSet%isViscousPlasticity) then
                         snlp_p = 0
@@ -240,7 +240,11 @@ contains
                         snlp_m    = 1
                      end if
 #elif MEF90_DIM==3
-                     snlp_m    = 1
+                     if (matpropSet%isViscousPlasticity) then
+                        snlp_m    = 6
+                     else
+                        snlp_m    = 1
+                     end if
 #endif
                      if (matpropSet%isViscousPlasticity) then
                         snlp_p = 0
